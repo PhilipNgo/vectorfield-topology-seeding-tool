@@ -11,7 +11,7 @@ from vtkmodules.vtkFiltersSources import (
     vtkArrowSource,
     vtkSphereSource
 )
-from vtk import vtkNetCDFCFReader, vtkMaskPolyData, vtkMaskPoints, vtkDataSetSurfaceFilter
+from vtk import vtkNetCDFCFReader, vtkMaskPolyData, vtkMaskPoints, vtkDataSetSurfaceFilter, vtkArrayCalculator
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkPolyDataMapper,
@@ -34,15 +34,23 @@ def main():
     reader.SphericalCoordinatesOff()
     reader.SetOutputTypeToStructured()
     reader.Update()
+    #print(reader.GetOutput())
     #reader.ReadAllVectorsOn()
     # reader.ReadAllScalarsOn()
     
+    vecFieldCalc = vtkArrayCalculator()
+    vecFieldCalc.SetInputData(reader.GetOutput())
+    vecFieldCalc.AddScalarArrayName("u")
+    vecFieldCalc.AddScalarArrayName("v")
+    vecFieldCalc.AddScalarArrayName("w")
+    vecFieldCalc.SetFunction("u*iHat + v*jHat + w*kHat")
+    vecFieldCalc.SetResultArrayName("velocity")
 
     # Convert to polydata?
-    input_data = vtkPolyData()
-    input_data.ShallowCopy(reader.GetOutput())
+    #input_data = vtkPolyData()
+    #input_data.ShallowCopy(reader.GetOutput())
     
-    print(type(input_data))
+    #print(type(input_data))
 
     # Create the glyphs source
     arrowSource = vtkArrowSource()
@@ -50,9 +58,10 @@ def main():
     # Create the mask (not wanting every single value)
     ptMask = vtkMaskPoints()
     #ptMask.SetOnRatio(200)
-    ptMask.SetInputData(input_data)
+    #ptMask.SetInputData(input_data)
+    ptMask.SetInputConnection(vecFieldCalc.GetOutputPort())
     ptMask.RandomModeOn()
-    ptMask.SetMaximumNumberOfPoints(100)
+    ptMask.SetMaximumNumberOfPoints(1000)
 
     # Create 3D Glyphs
     glyph3D = vtkGlyph3D()
