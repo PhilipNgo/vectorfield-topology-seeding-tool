@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 
 # noinspection PyUnresolvedReferences
+from matplotlib.pyplot import sca
 import vtkmodules.vtkInteractionStyle
 # noinspection PyUnresolvedReferences
 import vtkmodules.vtkRenderingOpenGL2
 from vtkmodules.vtkCommonColor import vtkNamedColors
-from vtkmodules.vtkCommonDataModel import vtkPolyData, vtkPointData
+from vtkmodules.vtkCommonDataModel import vtkPolyData
 from vtkmodules.vtkFiltersCore import vtkGlyph3D
 from vtkmodules.vtkFiltersSources import (
     vtkArrowSource,
-    vtkSphereSource
 )
-from vtk import vtkNetCDFCFReader, vtkMaskPolyData, vtkMaskPoints, vtkDataSetSurfaceFilter, vtkArrayCalculator
+from vtk import vtkNetCDFCFReader, vtkMaskPoints, vtkArrayCalculator
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkPolyDataMapper,
@@ -20,23 +20,18 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderer
 )
 
-
-
 def main():
-    colors = vtkNamedColors()
 
     filename = 'data/tornado3d.nc'
+    #filename = 'data/ctbl3d.nc'
 
     # Load the data
     reader = vtkNetCDFCFReader()
     reader.SetFileName(filename)
     reader.UpdateMetaData()
     reader.SphericalCoordinatesOff()
-    reader.SetOutputTypeToStructured()
+    reader.SetOutputTypeToAutomatic()
     reader.Update()
-    #print(reader.GetOutput())
-    #reader.ReadAllVectorsOn()
-    # reader.ReadAllScalarsOn()
     
     vecFieldCalc = vtkArrayCalculator()
     vecFieldCalc.SetInputData(reader.GetOutput())
@@ -45,34 +40,51 @@ def main():
     vecFieldCalc.AddScalarArrayName("w")
     vecFieldCalc.SetFunction("u*iHat + v*jHat + w*kHat")
     vecFieldCalc.SetResultArrayName("velocity")
+    vecFieldCalc.Update()
 
-    # Convert to polydata?
-    #input_data = vtkPolyData()
-    #input_data.ShallowCopy(reader.GetOutput())
+    plot_vectorfield(vectorfield=vecFieldCalc, max_points=1000, scale=1.5)
     
-    #print(type(input_data))
+    ######## UNCOMMENT BELOW TO SEE FUNCTION BASED VECTORFIELD ##########
+    
+    # s = vtkRTAnalyticSource()
+    # s.SetWholeExtent(-10,10,-10,10,-10,10)
+
+    # function_ = "(coordsX+coordsZ)*iHat + coordsY*jHat + (coordsX-coordsZ)*kHat"
+    # #function_ = "(coordsX)*iHat + (coordsY)*jHat + (coordsX)*kHat"
+
+    # vecFieldCalc = vtkArrayCalculator()
+    # vecFieldCalc.AddCoordinateScalarVariable("coordsX", 0)
+    # vecFieldCalc.AddCoordinateScalarVariable("coordsY", 1)
+    # vecFieldCalc.AddCoordinateScalarVariable("coordsZ", 2)
+    # vecFieldCalc.SetFunction(function_)
+    # vecFieldCalc.SetInputConnection(s.GetOutputPort())
+    # vecFieldCalc.Update()
+
+    # plot_vectorfield(vectorfield=vecFieldCalc, max_points=500, scale=0.05)
+
+    ######################################################################
+
+
+def plot_vectorfield(vectorfield, max_points = 1000, scale = 1.5):
+
+    colors = vtkNamedColors()
 
     # Create the glyphs source
     arrowSource = vtkArrowSource()
 
     # Create the mask (not wanting every single value)
     ptMask = vtkMaskPoints()
-    #ptMask.SetOnRatio(200)
-    #ptMask.SetInputData(input_data)
-    ptMask.SetInputConnection(vecFieldCalc.GetOutputPort())
+    ptMask.SetInputConnection(vectorfield.GetOutputPort())
     ptMask.RandomModeOn()
-    ptMask.SetMaximumNumberOfPoints(1000)
+    ptMask.SetMaximumNumberOfPoints(max_points)
 
     # Create 3D Glyphs
     glyph3D = vtkGlyph3D()
     glyph3D.SetSourceConnection(arrowSource.GetOutputPort())
     glyph3D.SetInputConnection(ptMask.GetOutputPort())
-    #glyph3D.SetInputData(input_data)
-    #glyph3D.SetVectorModeToUseNormal()
-    #glyph3D.SetColorModeToColorByVector()
     glyph3D.SetVectorModeToUseVector()
     
-    glyph3D.SetScaleFactor(2)
+    glyph3D.SetScaleFactor(scale)
     glyph3D.Update()
 
     # Visualize
@@ -86,7 +98,7 @@ def main():
     renderer = vtkRenderer()
     renderWindow = vtkRenderWindow()
     renderWindow.AddRenderer(renderer)
-    renderWindow.SetWindowName('OrientedGlyphs')
+    renderWindow.SetWindowName('Vectorfield')
     renderWindow.SetSize(1920,1080)
 
     renderWindowInteractor = vtkRenderWindowInteractor()
