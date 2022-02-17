@@ -17,7 +17,7 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderer
 )
 
-from vtk import vtkNetCDFCFReader, vtkArrayCalculator, vtkVectorFieldTopology, vtkMaskPoints, vtkRTAnalyticSource, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource
+from vtk import vtkNetCDFCFReader, vtkArrayCalculator, vtkVectorFieldTopology, vtkMaskPoints, vtkRTAnalyticSource, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkUnstructuredGrid, vtkTecplotReader, vtkXMLUnstructuredGridReader
 
 
 def main():
@@ -34,7 +34,7 @@ def main():
 
     # Create bounding box?
     s = vtkRTAnalyticSource()
-    factor = 1
+    factor = 2
     s.SetWholeExtent(-10*factor, 10*factor, -10*factor, 10*factor, -10*factor, 10*factor)
     
 
@@ -52,22 +52,42 @@ def main():
 
     # plot_vectorfield_topology(vectorfield=vecFieldCalc, bounding_box=s, show_vectorfield = True, scale = 1.5, max_points = 1000, debug = True)
 
-    ##########################################################
+    ############################ FUNCTION BASED DATA ####################################
 
-    function_ = "(coordsX+coordsZ)*iHat + coordsY*jHat + (coordsX-coordsZ)*kHat"
-    #function_ = "(coordsX-coordsZ)*iHat + (coordsZ) * jHat + (coordsX-coordsZ) * kHat"
+    # function_ = "(coordsX+coordsZ)*iHat + coordsY*jHat + (coordsX-coordsZ)*kHat"
+    # #function_ = "(coordsX-coordsZ)*iHat + (coordsZ) * jHat + (coordsX-coordsZ) * kHat"
     
-    vecFieldCalc2 = vtkArrayCalculator()
-    vecFieldCalc2.AddCoordinateScalarVariable("coordsX",0)
-    vecFieldCalc2.AddCoordinateScalarVariable("coordsY",1)
-    vecFieldCalc2.AddCoordinateScalarVariable("coordsZ",2)
-    vecFieldCalc2.SetFunction(function_)
-    vecFieldCalc2.SetInputConnection(s.GetOutputPort())
-    vecFieldCalc2.SetAttributeTypeToPointData()
-    vecFieldCalc2.Update()
+    # vecFieldCalc2 = vtkArrayCalculator()
+    # vecFieldCalc2.AddCoordinateScalarVariable("coordsX",0)
+    # vecFieldCalc2.AddCoordinateScalarVariable("coordsY",1)
+    # vecFieldCalc2.AddCoordinateScalarVariable("coordsZ",2)
+    # vecFieldCalc2.SetFunction(function_)
+    # vecFieldCalc2.SetInputConnection(s.GetOutputPort())
+    # vecFieldCalc2.SetAttributeTypeToPointData()
+    # vecFieldCalc2.Update()
 
-    plot_vectorfield_topology(vectorfield=vecFieldCalc2, bounding_box=s, show_vectorfield = True, scale = 0.05, max_points = 500, debug = True)
+    # plot_vectorfield_topology(vectorfield=vecFieldCalc2, bounding_box=s, show_vectorfield = True, scale = 0.05, max_points = 500, debug = True)
 
+    ################### LOW RES DATA ########################################################
+
+    filename = 'data/lowres_sample_data/cut_var_1_e20000101-020000-000.out.vtk'
+
+    reader = vtkXMLUnstructuredGridReader()
+    reader.SetFileName(filename)
+    reader.Update()
+
+    #field_to_visualize = 'velocity'
+    field_to_visualize = 'magnetic_field'
+
+
+    vecFieldCalc = vtkArrayCalculator()
+    vecFieldCalc.SetInputData(reader.GetOutput())
+    vecFieldCalc.AddVectorArrayName(field_to_visualize)
+    vecFieldCalc.SetResultArrayName(field_to_visualize)
+    vecFieldCalc.SetFunction(field_to_visualize)
+    vecFieldCalc.Update()
+
+    plot_vectorfield_topology(vectorfield=vecFieldCalc, bounding_box=s, show_vectorfield = True, scale = 2, max_points = 2000, debug = True)
 
 
 def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = False, scale=1.5, max_points = 1000, debug = False):
@@ -83,9 +103,9 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
     vft.SetSeparatrixDistance(1)
     vft.SetIntegrationStepSize(1)
     vft.SetMaxNumSteps(1000)
-    vft.SetComputeSurfaces(True)
-    vft.SetUseBoundarySwitchPoints(True)
-    vft.SetUseIterativeSeeding(True)
+    vft.SetComputeSurfaces(False)
+    vft.SetUseBoundarySwitchPoints(False)
+    vft.SetUseIterativeSeeding(True) # See if the simple (fast) or iterative (correct version)
     vft.Update()
 
     if debug: print("Created vectorfield object.")
@@ -107,8 +127,8 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
 
     pointActor = vtkActor()
     pointActor.SetMapper(pointMapper)
-    pointActor.GetProperty().SetColor(0.1, 0.1, 0.1)
-    pointActor.GetProperty().SetPointSize(20.)
+    pointActor.GetProperty().SetColor(0., 1., 0.)
+    pointActor.GetProperty().SetPointSize(15.)
     pointActor.GetProperty().SetRenderPointsAsSpheres(True)
 
     # The separating lines
@@ -195,8 +215,8 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
 
         actor = vtkActor()
         actor.SetMapper(mapper)
-        actor.GetProperty().SetColor(0,255,255)
-        actor.GetProperty().SetOpacity(0.12)
+        actor.GetProperty().SetColor(0,1,1)
+        actor.GetProperty().SetOpacity(0.5)
 
         renderer.AddActor(actor)
 
@@ -224,6 +244,10 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
 
     # Start the event loop.
     iren.Start()
+
+
+
+    
 
 if __name__ == '__main__':
     main()
