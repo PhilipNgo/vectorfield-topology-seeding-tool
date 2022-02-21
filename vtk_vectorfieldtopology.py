@@ -8,7 +8,6 @@ import vtkmodules.vtkInteractionStyle
 # noinspection PyUnresolvedReferences
 import vtkmodules.vtkRenderingOpenGL2
 from vtkmodules.vtkCommonColor import vtkNamedColors
-from vtkmodules.vtkFiltersSources import vtkCylinderSource
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkPolyDataMapper,
@@ -17,27 +16,18 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderer
 )
 
-from vtk import vtkNetCDFCFReader, vtkArrayCalculator, vtkVectorFieldTopology, vtkMaskPoints, vtkRTAnalyticSource, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkUnstructuredGrid, vtkTecplotReader, vtkXMLUnstructuredGridReader
+from vtk import vtkArrayCalculator, vtkVectorFieldTopology, vtkMaskPoints, vtkRTAnalyticSource, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkUnstructuredGrid, vtkTecplotReader, vtkXMLUnstructuredGridReader, vtkSimplePointsWriter
+from vtkmodules.util.numpy_support import vtk_to_numpy
+import numpy as np
 
 
 def main():
 
-    filename = 'data/tornado3d.nc'
-
-    # Load the data
-    reader = vtkNetCDFCFReader()
-    reader.SetFileName(filename)
-    reader.UpdateMetaData()
-    reader.SphericalCoordinatesOff()
-    reader.SetOutputTypeToAutomatic()
-    reader.Update()
-
     # Create bounding box?
     s = vtkRTAnalyticSource()
-    factor = 2
+    factor = 3
     s.SetWholeExtent(-10*factor, 10*factor, -10*factor, 10*factor, -10*factor, 10*factor)
     
-
     ############ VECTOR FIELD WITH TORNADO DATA ############
 
     # vecFieldCalc = vtkArrayCalculator()
@@ -68,29 +58,56 @@ def main():
 
     # plot_vectorfield_topology(vectorfield=vecFieldCalc2, bounding_box=s, show_vectorfield = True, scale = 0.05, max_points = 500, debug = True)
 
-    ################### LOW RES DATA ########################################################
+    ################### LOW RES DATA .VTK ########################################################
 
-    filename = 'data/lowres_sample_data/cut_var_1_e20000101-020000-000.out.vtk'
+    # filename = 'data/lowres_sample_data/cut_var_1_e20000101-020000-000.out.vtk'
 
-    reader = vtkXMLUnstructuredGridReader()
+    # reader = vtkXMLUnstructuredGridReader()
+    # reader.SetFileName(filename)
+    # reader.Update()
+
+    # #field_to_visualize = 'velocity'
+    # field_to_visualize = 'magnetic_field'
+
+
+    # vecFieldCalc = vtkArrayCalculator()
+    # vecFieldCalc.SetInputData(reader.GetOutput())
+    # vecFieldCalc.AddVectorArrayName(field_to_visualize)
+    # vecFieldCalc.SetResultArrayName(field_to_visualize)
+    # vecFieldCalc.SetFunction(field_to_visualize)
+    # vecFieldCalc.Update()
+
+    # plot_vectorfield_topology(vectorfield=vecFieldCalc, bounding_box=s, show_vectorfield = True, scale = 2, max_points = 2000, debug = True)
+
+    ###################### LOW RES DATA .DAT #####################
+
+    filename = 'data/lowres_sample_data/cut_mhd_2_e20000101-020000-000.dat'
+
+    # Rename X, Y, Z bx, by, bz in the .dat file
+    # rename_variables(filename=filename)
+
+    reader = vtkTecplotReader()
     reader.SetFileName(filename)
     reader.Update()
 
-    #field_to_visualize = 'velocity'
-    field_to_visualize = 'magnetic_field'
+    # Create unstructured grid
+    out = vtkUnstructuredGrid()
+    out.ShallowCopy(reader.GetOutput().GetBlock(0))
 
-
+    # Calculate the vectorfield
     vecFieldCalc = vtkArrayCalculator()
-    vecFieldCalc.SetInputData(reader.GetOutput())
-    vecFieldCalc.AddVectorArrayName(field_to_visualize)
-    vecFieldCalc.SetResultArrayName(field_to_visualize)
-    vecFieldCalc.SetFunction(field_to_visualize)
+    vecFieldCalc.SetInputData(out)
+    vecFieldCalc.AddScalarArrayName('bx')
+    vecFieldCalc.AddScalarArrayName('by')
+    vecFieldCalc.AddScalarArrayName('bz')
+    vecFieldCalc.SetFunction("bx*iHat + by*jHat + bz*kHat")
+    vecFieldCalc.SetResultArrayName("magnetic_field")
     vecFieldCalc.Update()
 
-    plot_vectorfield_topology(vectorfield=vecFieldCalc, bounding_box=s, show_vectorfield = True, scale = 2, max_points = 2000, debug = True)
+    plot_vectorfield_topology(vectorfield=vecFieldCalc, bounding_box=s, show_vectorfield = True, scale = 2, max_points = 1000, debug = True)
 
 
-def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = False, scale=1.5, max_points = 1000, debug = False):
+def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = False, scale=1.5, max_points = 1000, debug = False, write_file = True):
 
     colors = vtkNamedColors()
 
@@ -107,6 +124,16 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
     vft.SetUseBoundarySwitchPoints(False)
     vft.SetUseIterativeSeeding(True) # See if the simple (fast) or iterative (correct version)
     vft.Update()
+
+    if(write_file):
+        write_to_file(vft, "seedpoints.txt")    
+
+    #The critical points
+    pointMapper = vtkDataSetMapper()
+    pointMapper.SetInputConnection(vft.GetOutputPort(0))
+
+    pointActor = vtkActor()
+    pointActor.SetMapper(pointMapper)
 
     if debug: print("Created vectorfield object.")
 
@@ -245,9 +272,61 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
     # Start the event loop.
     iren.Start()
 
+def rename_variables(filename):
+    try:
+
+        print("Renaming variables..")
+
+        # opening the file in read mode
+        file = open(filename, "r")
+
+        list_of_lines = file.readlines()
+        list_of_lines[1] = 'VARIABLES="X", "Y", "Z ", "Rho [amu/cm^3]", "U_x [km/s]", "U_y [km/s]", "U_z [km/s]", "bx", "by", "bz", "P [nPa]", "J_x [`mA/m^2]", "J_y [`mA/m^2]", "J_z [`mA/m^2]"\n'
+
+        file = open(filename, "w")
+        file.writelines(list_of_lines)
+        file.close()
+
+        print("Renamed variable X,Y,Z,bx,by,bz")
+
+    except IOError:
+        print ("Could not open file!")
 
 
+def write_to_file(vft, out_filename):
+
+    gradient = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(0))
+    type = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(1))
+    detailed_type = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(1))
+
+    # Option 1: Only gradients???
+    #np.savetxt(out_filename, gradient, fmt='%1.5f')
+
+    # Option 2:  TODO: Check if correct
+    writer = vtkSimplePointsWriter()
+    writer.SetFileName(out_filename)
+    writer.SetInputConnection(vft.GetOutputPort(0))
+    writer.Write()
+
+    outF = open("details.txt", "w")
     
+    outF.write("=============== TYPE LIST ===============\n")
+    outF.write("DEGENERATE_3D = -1\nSINK_3D = 0,\nSADDLE_1_3D = 1\nSADDLE_2_3D = 2\nSOURCE_3D = 3\nCENTER_3D = 4\n")
+    outF.write("=========================================\n")
+    for line in type:
+        # write line to output file
+        outF.write(str(line))
+        outF.write(", ")
+
+    outF.write("\n\n=========== DETAILED TYPE LIST ==========\n")
+    outF.write("ATTRACTING_NODE_3D = 0\nATTRACTING_FOCUS_3D = 1\nNODE_SADDLE_1_3D = 2\nFOCUS_SADDLE_1_3D = 3\nNODE_SADDLE_2_3D = 4\nFOCUS_SADDLE_2_3D = 5\nREPELLING_NODE_3D = 6\nREPELLING_FOCUS_3D = 7\nCENTER_DETAILED_3D = 8\n")
+    outF.write("=========================================\n")
+    for line in detailed_type:
+        # write line to output file
+        outF.write(str(line))
+        outF.write(", ")
+    outF.close()
+
 
 if __name__ == '__main__':
     main()
