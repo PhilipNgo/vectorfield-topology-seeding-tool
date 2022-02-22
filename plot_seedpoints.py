@@ -93,7 +93,7 @@ def custom_axes(transform):
 def main():
 
     # Load the txt file
-    filename = 'seedpoints.txt'
+    filename = 'seedpoints/seedpoints.txt'
 
     pointCloud = VtkPointCloud()
     pointCloud=load_data(filename,pointCloud)
