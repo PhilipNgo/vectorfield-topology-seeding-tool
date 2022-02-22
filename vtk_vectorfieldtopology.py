@@ -4,6 +4,7 @@
 # creation.
 
 # noinspection PyUnresolvedReferences
+import os
 import vtkmodules.vtkInteractionStyle
 # noinspection PyUnresolvedReferences
 import vtkmodules.vtkRenderingOpenGL2
@@ -16,31 +17,17 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderer
 )
 
-from vtk import vtkArrayCalculator, vtkVectorFieldTopology, vtkMaskPoints, vtkRTAnalyticSource, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkUnstructuredGrid, vtkTecplotReader, vtkXMLUnstructuredGridReader, vtkSimplePointsWriter
+from vtk import vtkArrayCalculator, vtkVectorFieldTopology, vtkMaskPoints, vtkRTAnalyticSource, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkUnstructuredGrid, vtkTecplotReader, vtkXMLUnstructuredGridReader, vtkSimplePointsWriter, vtkAxesActor, vtkTransform
 from vtkmodules.util.numpy_support import vtk_to_numpy
 import numpy as np
 
 
 def main():
 
-    # Create bounding box?
+    # Create bounding box
     s = vtkRTAnalyticSource()
     factor = 3
     s.SetWholeExtent(-10*factor, 10*factor, -10*factor, 10*factor, -10*factor, 10*factor)
-    
-    ############ VECTOR FIELD WITH TORNADO DATA ############
-
-    # vecFieldCalc = vtkArrayCalculator()
-    # vecFieldCalc.SetInputData(reader.GetOutput())
-    # vecFieldCalc.AddScalarArrayName("u")
-    # vecFieldCalc.AddScalarArrayName("v")
-    # vecFieldCalc.AddScalarArrayName("w")
-    # vecFieldCalc.SetFunction("u*iHat + v*jHat + w*kHat")
-    # vecFieldCalc.SetResultArrayName("velocity")
-    # vecFieldCalc.SetAttributeTypeToPointData()
-    # vecFieldCalc.Update()
-
-    # plot_vectorfield_topology(vectorfield=vecFieldCalc, bounding_box=s, show_vectorfield = True, scale = 1.5, max_points = 1000, debug = True)
 
     ############################ FUNCTION BASED DATA ####################################
 
@@ -104,10 +91,14 @@ def main():
     vecFieldCalc.SetResultArrayName("magnetic_field")
     vecFieldCalc.Update()
 
-    plot_vectorfield_topology(vectorfield=vecFieldCalc, bounding_box=s, show_vectorfield = True, scale = 2, max_points = 1000, debug = True)
+    plot_vectorfield_topology(vectorfield=vecFieldCalc, bounding_box=s, show_vectorfield = True, 
+    show_critical_points = True, show_separator = False,  
+    scale = 2, max_points = 1000, debug = True, write_file=True)
 
 
-def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = False, scale=1.5, max_points = 1000, debug = False, write_file = True):
+def plot_vectorfield_topology(vectorfield, bounding_box, show_critical_points = True, show_separator = True, 
+show_vectorfield = False, show_separating_surface = False, show_boundary_switch = False, 
+scale=1.5, max_points = 1000, debug = False, write_file = False):
 
     colors = vtkNamedColors()
 
@@ -120,8 +111,8 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
     vft.SetSeparatrixDistance(1)
     vft.SetIntegrationStepSize(1)
     vft.SetMaxNumSteps(1000)
-    vft.SetComputeSurfaces(False)
-    vft.SetUseBoundarySwitchPoints(False)
+    vft.SetComputeSurfaces(show_separating_surface)
+    vft.SetUseBoundarySwitchPoints(show_boundary_switch)
     vft.SetUseIterativeSeeding(True) # See if the simple (fast) or iterative (correct version)
     vft.Update()
 
@@ -155,7 +146,7 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
     pointActor = vtkActor()
     pointActor.SetMapper(pointMapper)
     pointActor.GetProperty().SetColor(0., 1., 0.)
-    pointActor.GetProperty().SetPointSize(15.)
+    pointActor.GetProperty().SetPointSize(10.)
     pointActor.GetProperty().SetRenderPointsAsSpheres(True)
 
     # The separating lines
@@ -186,7 +177,7 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
     lineActor2 = vtkActor()
     lineActor2.SetMapper(lineMapper2)
     lineActor2.GetProperty().SetColor(0.2, 0.2, 0.2)
-    lineActor2.GetProperty().SetLineWidth(10.)
+    lineActor2.GetProperty().SetLineWidth(35.)
     lineActor2.GetProperty().SetRenderLinesAsTubes(True)
 
 
@@ -203,15 +194,22 @@ def plot_vectorfield_topology(vectorfield, bounding_box, show_vectorfield = Fals
     if debug: print("Created Mappers and Actors.")
 
     if debug: print("Creating Renderers..")
+
+    # Add x,y,z axis
+    transform = vtkTransform()
+    transform.Translate(25.0, -10.0, 0.0)
+    axes = custom_axes(transform)
     
     # Renderer
     renderer = vtkRenderer()
+    renderer.AddActor(axes)
     renderer.AddActor(sActor)
-    renderer.AddActor(pointActor)
-    renderer.AddActor(lineActor)
-    renderer.AddActor(surfaceActor)
-    renderer.AddActor(lineActor2)
-    renderer.AddActor(surfaceActor2)
+    if(show_critical_points): renderer.AddActor(pointActor)
+    if(show_separator): renderer.AddActor(lineActor)
+    if(show_separating_surface): renderer.AddActor(surfaceActor) # Surface
+    if(show_boundary_switch):
+        renderer.AddActor(lineActor2) # Boundary switch lines
+        renderer.AddActor(surfaceActor2) # Boundary switch surface
     renderer.ResetCamera()
     renderer.SetBackground(1., 1., 1.)
 
@@ -292,23 +290,33 @@ def rename_variables(filename):
     except IOError:
         print ("Could not open file!")
 
-
 def write_to_file(vft, out_filename):
 
     gradient = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(0))
     type = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(1))
     detailed_type = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(1))
 
+    # Create target Directory if don't exist
+    dirName = "seedpoints"
+    if not os.path.exists(dirName):
+        os.mkdir(dirName)
+        print("Directory " , dirName ,  " Created ")
+    else:    
+        print("Directory " , dirName ,  " already exists")
+
+
+
     # Option 1: Only gradients???
     #np.savetxt(out_filename, gradient, fmt='%1.5f')
 
     # Option 2:  TODO: Check if correct
     writer = vtkSimplePointsWriter()
-    writer.SetFileName(out_filename)
+    writer.SetDecimalPrecision(5)
+    writer.SetFileName("{}/{}".format(dirName, out_filename))
     writer.SetInputConnection(vft.GetOutputPort(0))
     writer.Write()
 
-    outF = open("details.txt", "w")
+    outF = open("{}/details.txt".format(dirName), "w")
     
     outF.write("=============== TYPE LIST ===============\n")
     outF.write("DEGENERATE_3D = -1\nSINK_3D = 0,\nSADDLE_1_3D = 1\nSADDLE_2_3D = 2\nSOURCE_3D = 3\nCENTER_3D = 4\n")
@@ -326,6 +334,36 @@ def write_to_file(vft, out_filename):
         outF.write(str(line))
         outF.write(", ")
     outF.close()
+
+def custom_axes(transform):
+
+    axes = vtkAxesActor()
+    #  The axes are positioned with a user transform
+    axes.SetUserTransform(transform)
+    axes.SetTotalLength(5, 5, 5)
+    # X-Axis
+    axes.GetXAxisCaptionActor2D().GetTextActor().SetTextScaleModeToNone()
+    axes.GetXAxisCaptionActor2D().GetCaptionTextProperty().SetFontSize(12)
+    axes.GetXAxisCaptionActor2D().GetCaptionTextProperty().ItalicOff()
+    axes.GetXAxisCaptionActor2D().GetCaptionTextProperty().BoldOff()
+    axes.GetXAxisCaptionActor2D().GetCaptionTextProperty().ShadowOff()
+    axes.GetXAxisCaptionActor2D().GetCaptionTextProperty().SetColor(0.0,0.0,0.0)
+    # Y-Axis
+    axes.GetYAxisCaptionActor2D().GetTextActor().SetTextScaleModeToNone()
+    axes.GetYAxisCaptionActor2D().GetCaptionTextProperty().SetFontSize(12)
+    axes.GetYAxisCaptionActor2D().GetCaptionTextProperty().ItalicOff()
+    axes.GetYAxisCaptionActor2D().GetCaptionTextProperty().BoldOff()
+    axes.GetYAxisCaptionActor2D().GetCaptionTextProperty().ShadowOff()
+    axes.GetYAxisCaptionActor2D().GetCaptionTextProperty().SetColor(0.0,0.0,0.0)
+    # Z-Axis
+    axes.GetZAxisCaptionActor2D().GetTextActor().SetTextScaleModeToNone()
+    axes.GetZAxisCaptionActor2D().GetCaptionTextProperty().SetFontSize(12)
+    axes.GetZAxisCaptionActor2D().GetCaptionTextProperty().ItalicOff()
+    axes.GetZAxisCaptionActor2D().GetCaptionTextProperty().BoldOff()
+    axes.GetZAxisCaptionActor2D().GetCaptionTextProperty().ShadowOff()
+    axes.GetZAxisCaptionActor2D().GetCaptionTextProperty().SetColor(0.0,0.0,0.0)
+
+    return axes
 
 
 if __name__ == '__main__':
