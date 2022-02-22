@@ -13,7 +13,7 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderWindowInteractor,
     vtkRenderer
 )
-from vtk import vtkPoints, vtkPolyData, vtkCellArray, vtkDoubleArray, vtkTransform, vtkAxesActor, vtkPointPicker, MouseInteractorStylePP
+from vtk import vtkPoints, vtkPolyData, vtkCellArray, vtkDoubleArray, vtkTransform, vtkAxesActor
 from vtkmodules.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 import numpy as np
 from numpy import random, genfromtxt, size
@@ -117,17 +117,9 @@ def main():
     renderWindow.AddRenderer(renderer)
     renderWindow.SetSize(1920,1080)
 
-    # Pointpicker
-    pointPicker = vtkPointPicker()
-    # Style
-    style = MouseInteractorStylePP()
-
     # Interactor
     renderWindowInteractor = vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
-    renderWindowInteractor.SetPicker(pointPicker)
-
-    renderWindowInteractor.SetInteractorStyle(style)
 
     # Begin Interaction
     renderWindow.Render()
