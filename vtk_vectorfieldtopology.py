@@ -5,6 +5,7 @@
 
 # noinspection PyUnresolvedReferences
 import os
+from matplotlib.font_manager import json_dump
 import vtkmodules.vtkInteractionStyle
 # noinspection PyUnresolvedReferences
 import vtkmodules.vtkRenderingOpenGL2
@@ -20,6 +21,7 @@ from vtkmodules.vtkRenderingCore import (
 from vtk import vtkArrayCalculator, vtkVectorFieldTopology, vtkMaskPoints, vtkRTAnalyticSource, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkUnstructuredGrid, vtkTecplotReader, vtkXMLUnstructuredGridReader, vtkSimplePointsWriter, vtkAxesActor, vtkTransform
 from vtkmodules.util.numpy_support import vtk_to_numpy
 import numpy as np
+import json
 
 
 def main():
@@ -292,7 +294,7 @@ def rename_variables(filename):
 
 def write_to_file(vft, out_filename):
 
-    gradient = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(0))
+    #gradient = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(0))
     type = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(1))
     detailed_type = vtk_to_numpy(vft.GetOutput(0).GetPointData().GetArray(1))
 
@@ -304,36 +306,41 @@ def write_to_file(vft, out_filename):
     else:    
         print("Directory " , dirName ,  " already exists")
 
-
-
-    # Option 1: Only gradients???
-    #np.savetxt(out_filename, gradient, fmt='%1.5f')
-
-    # Option 2:  TODO: Check if correct
+    # Write x,y,z coordinates of critical points
     writer = vtkSimplePointsWriter()
     writer.SetDecimalPrecision(5)
     writer.SetFileName("{}/{}".format(dirName, out_filename))
     writer.SetInputConnection(vft.GetOutputPort(0))
     writer.Write()
 
-    outF = open("{}/details.txt".format(dirName), "w")
-    
-    outF.write("=============== TYPE LIST ===============\n")
-    outF.write("DEGENERATE_3D = -1\nSINK_3D = 0,\nSADDLE_1_3D = 1\nSADDLE_2_3D = 2\nSOURCE_3D = 3\nCENTER_3D = 4\n")
-    outF.write("=========================================\n")
-    for line in type:
-        # write line to output file
-        outF.write(str(line))
-        outF.write(", ")
+    json_data = {
+        'TYPES': {
+            'DEGENERATE_3D': -1,
+            'SINK_3D': 0,
+            'SADDLE_1_3D': 1,
+            'SADDLE_2_3D': 2,
+            'SOURCE_3D' : 3,
+            'CENTER_3D' : 4,
+            'LIST': type.tolist()
+        },
+        'DETAILED TYPES':{
+            'ATTRACTING_NODE_3D' : 0,
+            'ATTRACTING_FOCUS_3D' : 1,
+            'NODE_SADDLE_1_3D' : 2,
+            'FOCUS_SADDLE_1_3D' : 3,
+            'NODE_SADDLE_2_3D' : 4,
+            'FOCUS_SADDLE_2_3D' : 5,
+            'REPELLING_NODE_3D' : 6,
+            'REPELLING_FOCUS_3D' : 7,
+            'CENTER_DETAILED_3D' : 8,
+            'LIST': detailed_type.tolist()
+        }
+    }
 
-    outF.write("\n\n=========== DETAILED TYPE LIST ==========\n")
-    outF.write("ATTRACTING_NODE_3D = 0\nATTRACTING_FOCUS_3D = 1\nNODE_SADDLE_1_3D = 2\nFOCUS_SADDLE_1_3D = 3\nNODE_SADDLE_2_3D = 4\nFOCUS_SADDLE_2_3D = 5\nREPELLING_NODE_3D = 6\nREPELLING_FOCUS_3D = 7\nCENTER_DETAILED_3D = 8\n")
-    outF.write("=========================================\n")
-    for line in detailed_type:
-        # write line to output file
-        outF.write(str(line))
-        outF.write(", ")
-    outF.close()
+    # Directly from dictionary
+    with open("{}/details.json".format(dirName), 'w') as outfile:
+        json.dump(json_data, outfile, ensure_ascii=False, indent=4)
+
 
 def custom_axes(transform):
 
