@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 
 # Temp import:
 from vtkmodules.vtkCommonColor import vtkNamedColors
@@ -14,7 +15,7 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderWindowInteractor,
     vtkRenderer
 )
-from vtk import vtkTransform
+from vtk import vtkTransform, vtkPointLocator, vtkCellLocator
 import json
 from vectorfieldtopology_helper import custom_axes
 
@@ -73,13 +74,24 @@ def remove_unwanted_critical_points(x,y,z, radius, infile, indir="unprocessed_da
     print(f"Updated critical points and files in directory '{outdir}' (Removed {len(indices_to_remove)} critical points)")
 
 def remove_lines(indir, filename, outdir, indices_to_remove):
-
+    """Removes unwanted lines from a text file.
+        :indir: Directory of file (String)
+        :filename: File to remove lines from (String)
+        :outdir: Directory of output file (String)
+        :indices_to_remove: List of indicies to remove (List)
+    """
     data = np.genfromtxt(f"{indir}/{filename}", dtype=float)
     data = np.delete(data, indices_to_remove, axis=0)
     np.savetxt(f"{outdir}/processed_{filename}", data)
 
 def remove_lines_json(indir, filename, outdir, indices_to_remove):
-    
+    """Removes unwanted lines from a json file.
+        :indir: Directory of file (String)
+        :filename: File to remove lines from (String)
+        :outdir: Directory of output file (String)
+        :indices_to_remove: List of indicies to remove (List)
+    """
+
     f = open(f'{indir}/{filename}')
 
     data = json.load(f)
@@ -101,6 +113,13 @@ def remove_lines_json(indir, filename, outdir, indices_to_remove):
     f.close()
     
 def visualize_points(ex,ey,ez,r,criticalpoints):
+    """Plots points on the screen
+        :ex: x component of earths position
+        :ey: y component of earths position
+        :ez: z component of earths position
+        :r: radius component of earths position
+        :criticalpoints: List of criticalpoints to visualize (List)
+    """
 
     colors = vtkNamedColors()
 
@@ -184,3 +203,63 @@ def visualize_points(ex,ey,ez,r,criticalpoints):
     renderWindowInteractor.Start()
 
 
+def _idlist_to_numpy(a):
+    """Returns the vtkIdList as a numpy list
+        :a: list component (vtkIdList)
+    """
+
+    n = a.GetNumberOfIds()
+    return np.array([a.GetId(i) for i in range(n)])
+
+def generate_status(grid, outfile, critical_point_infile):
+    """Generates a csv file with status information of the critical points and the cell it is in.
+        :grid: The grid where the points lie (vtkUnstructeredGrid())
+        :outfile: Name of the output file (String)
+        :critical_point_infile: Filename of the file containing all the critical points (String)
+    """
+
+    critical_point_positions = np.genfromtxt(critical_point_infile, dtype=float,usecols=[0,1,2])
+
+    point_locator = vtkPointLocator()
+    point_locator.SetDataSet(grid)
+    point_locator.Update()
+
+    cell_locator = vtkCellLocator()
+    cell_locator.SetDataSet(grid)
+    cell_locator.BuildLocator()
+
+    critical_point_ids = []
+    critical_point_cell_ids = []
+    critical_point_cell_boundary_ids = []
+
+    for position in critical_point_positions:
+
+        point_id = point_locator.FindClosestPoint(position)
+        cell_id = cell_locator.FindCell(position)
+        cell_point_ids = _idlist_to_numpy(grid.GetCell(cell_id).GetPointIds())
+
+        critical_point_ids.append(point_id)
+        critical_point_cell_ids.append(cell_id)
+        critical_point_cell_boundary_ids.append(cell_point_ids)
+
+    # Status for critical point
+    critical_point_status = []
+
+    for id in critical_point_ids:
+        status = grid.GetPointData().GetArray("Status").GetValue(id)
+        critical_point_status.append(status)
+
+    # Status for critical point boundary
+    cell_boundary_status = [] 
+
+    for ids in critical_point_cell_boundary_ids:
+        status_list = []
+        for id in ids:
+            status = grid.GetPointData().GetArray("Status").GetValue(id)
+            status_list.append(float(status))
+        
+        cell_boundary_status.append(status_list)
+
+    collection_arr = list(zip(critical_point_ids, critical_point_cell_ids, critical_point_cell_boundary_ids, critical_point_status, cell_boundary_status))
+
+    pd.DataFrame(collection_arr).to_csv(outfile, header=["Point ID", "Cell ID", "Cell Boundary IDs", "Status Point", "Status Boundary"], index=False)

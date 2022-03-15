@@ -8,8 +8,8 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderer
 )
 
-from vtk import vtkVectorFieldTopology, vtkMaskPoints, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkSimplePointsWriter, vtkAxesActor, vtkTransform
-from vtkmodules.util.numpy_support import vtk_to_numpy
+from vtk import vtkVectorFieldTopology, vtkMaskPoints, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkSimplePointsWriter, vtkAxesActor, vtkTransform, vtkArrayCalculator, vtkLineIntegralConvolution2D, vtkXMLUnstructuredGridWriter
+from vtkmodules.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 import json
 
 def find_topological_features(vectorfield, bounding_box, visualize=False, show_critical_points = True, show_separator = True, 
@@ -45,6 +45,8 @@ scale=1.5, max_points = 1000, debug = False, write_file = False):
     vft.SetUseIterativeSeeding(True) # See if the simple (fast) or iterative (correct version)
     vft.SetExcludeBoundary(True)
     vft.Update()
+
+    if debug: print("Created vectorfield topology.")
 
     if(write_file):
         write_to_file(vft, "criticalpoints.txt")    
@@ -175,9 +177,10 @@ scale=1.5, max_points = 1000, debug = False, write_file = False):
             renderer.AddActor(actor)
 
         
+
         renWin = vtkRenderWindow() 
         renWin.AddRenderer(renderer)
-        renWin.SetMultiSamples(0)
+        # renWin.SetMultiSamples(0)
         renWin.SetSize(1920,1080)
         renWin.SetWindowName('Vectorfield Topology')
 
@@ -190,8 +193,8 @@ scale=1.5, max_points = 1000, debug = False, write_file = False):
 
         # We'll zoom in a little by accessing the camera and invoking a "Zoom"
         # method on it.
-        renderer.ResetCamera()
-        renderer.GetActiveCamera().Zoom(1.5)
+        # renderer.ResetCamera()
+        # renderer.GetActiveCamera().Zoom(1.5)
         renWin.Render()
 
         if debug: print("Created Renderer.")
@@ -199,7 +202,7 @@ scale=1.5, max_points = 1000, debug = False, write_file = False):
         # Start the event loop.
         iren.Start()
 
-def rename_tecplot_header(filename):
+def rename_tecplot_header(filename, large_file=False):
     """Renames the variables in the tecplot file to correctly match vtk requirements
         :filename: input file to change (String)
     """
@@ -211,13 +214,16 @@ def rename_tecplot_header(filename):
         file = open(filename, "r")
 
         list_of_lines = file.readlines()
-        list_of_lines[1] = 'VARIABLES="X", "Y", "Z", "Rho [amu/cm^3]", "U_x [km/s]", "U_y [km/s]", "U_z [km/s]", "bx", "by", "bz", "P [nPa]", "J_x [`mA/m^2]", "J_y [`mA/m^2]", "J_z [`mA/m^2]"\n'
+        if(large_file):
+            list_of_lines[1] = 'VARIABLES="X", "Y", "Z", "Rho [amu/cm^3]", "U_x [km/s]", "U_y [km/s]", "U_z [km/s]", "E [J/m^3]", "bx", "by", "bz", "B1_x [nT]", "B1_y [nT]", "B1_z [nT]", "P [nPa]", "jx", "jy", "jz", "Status"\n'
+        else:
+            list_of_lines[1] = 'VARIABLES="X", "Y", "Z", "Rho [amu/cm^3]", "U_x [km/s]", "U_y [km/s]", "U_z [km/s]", "bx", "by", "bz", "P [nPa]", "jx", "jy", "jz"\n'
 
         file = open(filename, "w")
         file.writelines(list_of_lines)
         file.close()
 
-        print("Renamed variable X,Y,Z,bx,by,bz")
+        print("Renamed variable X,Y,Z,bx,by,bz,jx,jy,jz")
 
     except IOError:
         print(f"Could not open file: '{filename}'")
@@ -281,6 +287,72 @@ def write_to_file(vft, out_filename):
         json.dump(json_data, outfile, ensure_ascii=False, indent=4)
 
     print(f"Details saved to: '{dirName}/details.json'")
+
+
+def get_vector_field(array_name_x, array_name_y, array_name_z, input_data, result_array_name="custom_field"):
+    """Returns vectorfield data
+        :array_name_x: Name of x component (String)
+        :array_name_y: Name of y component (String)
+        :array_name_z: Name of z component (String)
+        :input_data: Input data (vtkUnstructuredGrid())
+        :result_array_name: Name of the resulting array (String)
+    """
+
+    # Calculate the vectorfield
+    vecFieldCalc = vtkArrayCalculator()
+    vecFieldCalc.SetInputData(input_data)
+    vecFieldCalc.AddScalarArrayName(array_name_x)
+    vecFieldCalc.AddScalarArrayName(array_name_y)
+    vecFieldCalc.AddScalarArrayName(array_name_z)
+    vecFieldCalc.SetFunction(f"{array_name_x}*iHat + {array_name_y}*jHat + {array_name_z}*kHat")
+    vecFieldCalc.SetResultArrayName(result_array_name)
+    vecFieldCalc.Update()
+
+    return vecFieldCalc
+
+def add_inverted_data(out):
+
+    bx_inv = np.multiply(-1, vtk_to_numpy(out.GetPointData().GetArray(4))) 
+    by_inv = np.multiply(1, vtk_to_numpy(out.GetPointData().GetArray(5))) 
+    bz_inv = np.multiply(1, vtk_to_numpy(out.GetPointData().GetArray(6))) 
+
+    out.GetPointData().AddArray(numpy_to_vtk(bx_inv))
+    out.GetPointData().GetArray(11).SetName("bx_inv")
+    out.GetPointData().AddArray(numpy_to_vtk(by_inv))
+    out.GetPointData().GetArray(12).SetName("by_inv")
+    out.GetPointData().AddArray(numpy_to_vtk(bz_inv))
+    out.GetPointData().GetArray(13).SetName("bz_inv")
+
+    return out
+
+def add_j_cross_b(out):
+
+    bx = vtk_to_numpy(out.GetPointData().GetArray(4))
+    by = vtk_to_numpy(out.GetPointData().GetArray(5))
+    bz = vtk_to_numpy(out.GetPointData().GetArray(6))
+
+    jx = vtk_to_numpy(out.GetPointData().GetArray(8))
+    jy = vtk_to_numpy(out.GetPointData().GetArray(9))
+    jz = vtk_to_numpy(out.GetPointData().GetArray(10))
+
+    b_vec = list(zip(bx,by,bz))
+    j_vec = list(zip(jx,jy,jz))
+
+    j_cross_b = np.cross(j_vec, b_vec)
+
+    jcb_x = [i[0] for i in j_cross_b]
+    jcb_y = [i[1] for i in j_cross_b]
+    jcb_z = [i[2] for i in j_cross_b]
+
+    out.GetPointData().AddArray(numpy_to_vtk(jcb_x))
+    out.GetPointData().GetArray(11).SetName("jcb_x")
+    out.GetPointData().AddArray(numpy_to_vtk(jcb_y))
+    out.GetPointData().GetArray(12).SetName("jcb_y")
+    out.GetPointData().AddArray(numpy_to_vtk(jcb_z))
+    out.GetPointData().GetArray(13).SetName("jcb_z")
+
+    return out
+
 
 def custom_axes(transform):
     """Returns helper axis

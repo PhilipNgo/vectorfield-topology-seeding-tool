@@ -16,7 +16,7 @@ import numpy as np
 # from numpy import genfromtxt, cross, linalg as LA
 from collections import Counter
 
-from vtk import vtkSimplePointsWriter, vtkTransform, vtkPlaneSource, vtkTransformPolyDataFilter, vtkMaskPoints, vtkArrowSource
+from vtk import vtkSimplePointsWriter, vtkTransform, vtkPlaneSource, vtkTransformPolyDataFilter, vtkMaskPoints, vtkArrowSource, vtkDiskSource, vtkTriangleFilter, vtkXMLUnstructuredGridWriter, vtkPolyDataWriter
 from vectorfieldtopology_helper import custom_axes 
 from vtkmodules.util.numpy_support import numpy_to_vtk
 
@@ -24,9 +24,7 @@ def generate_seedpoints(infile, outfile, visualize=False):
     """Generate seedpoints with the help of critical points by sampling points around the critical points. 
         :infile: input file with critical points (String)
         :outfile: output file with critical points (String)
-    """
-
-    colors = vtkNamedColors()
+    """ 
 
     # Load data
     data = np.genfromtxt(infile,dtype=float,usecols=[0,1,2])
@@ -36,57 +34,17 @@ def generate_seedpoints(infile, outfile, visualize=False):
     for x,y,z in data:
         points.InsertNextPoint(x, y, z)
 
-    # ============= Original critcial points position ==================
-    cp_polydata = vtkPolyData()
-    cp_polydata.SetPoints(points)
 
-    pointSource = vtkSphereSource()
-    pointSource.SetThetaResolution(10)
-    pointSource.SetPhiResolution(10)
-    pointSource.SetRadius(0.1)
+    # Sphere with radius x from the critical point 
 
-    pGlyph3D = vtkGlyph3D()
-    pGlyph3D.SetSourceConnection(pointSource.GetOutputPort())
-    pGlyph3D.SetInputData(cp_polydata)
-    pGlyph3D.Update()
-
-    # Visualize
-    pMapper = vtkPolyDataMapper()
-    pMapper.SetInputConnection(pGlyph3D.GetOutputPort())
-
-    pActor = vtkActor()
-    pActor.SetMapper(pMapper)
-    pActor.GetProperty().SetColor(colors.GetColor3d('Black'))
-
-
-    # ======= Sphere with radius x from the critical point ========= #
-
-    polydata = vtkPolyData()
-    polydata.SetPoints(points)
-
-    sphereSource = vtkSphereSource()
-    sphereSource.SetThetaResolution(3)
-    sphereSource.SetPhiResolution(3)
-    sphereSource.SetRadius(1)
-
-    glyph3D = vtkGlyph3D()
-    glyph3D.SetSourceConnection(sphereSource.GetOutputPort())
-    glyph3D.SetInputData(polydata)
-    glyph3D.Update()
-
-    # Visualize seed points
-    mapper = vtkPolyDataMapper()
-    mapper.SetInputConnection(glyph3D.GetOutputPort())
-
-    actor = vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(colors.GetColor3d('Salmon'))
-    actor.GetProperty().SetOpacity(0.5)
-    actor.GetProperty().SetRepresentationToWireframe()
-
-    # ================================================================ #
+    actor, spherical_glyph = get_sphere_around_points_actor(points=points, return_glyph=True)
 
     if(visualize):
+        
+        colors = vtkNamedColors()
+
+        # Point cloud
+        pointcloud_actor = get_pointcloud_actor(points)
         
         # Add X,Y,Z helper axis
         transform = vtkTransform()
@@ -102,7 +60,7 @@ def generate_seedpoints(infile, outfile, visualize=False):
         renderWindowInteractor.SetRenderWindow(renderWindow)
 
         renderer.AddActor(actor)
-        renderer.AddActor(pActor)
+        renderer.AddActor(pointcloud_actor)
         renderer.AddActor(axes)
         renderer.SetBackground(colors.GetColor3d('SlateGray'))  # Background Slate Gray
         
@@ -111,27 +69,23 @@ def generate_seedpoints(infile, outfile, visualize=False):
         renderWindowInteractor.Start()
 
     # Write x,y,z coordinates of critical points
-    writer = vtkSimplePointsWriter()
-    writer.SetDecimalPrecision(5)
-    writer.SetFileName(outfile)
-    writer.SetInputConnection(glyph3D.GetOutputPort(0))
-    writer.Write()
-
-    print(f"Generated {glyph3D.GetOutput().GetPointData().GetNumberOfTuples()} seed points in file: '{outfile}'")
+    write_to_file(outfile=outfile, glyph=spherical_glyph)
+    write_to_vtk(outfile="spherical_highres.vtk", glyph=spherical_glyph)
 
 
-def generate_seedpoints_with_plane(infile, critical_point_infile, outfile, visualize=True, vectorfield=None):
+def generate_seedpoints_with_plane(infile, critical_point_infile, outfile, visualize=True, show_planes=True, show_normals=True, vectorfield=None):
     """Generate seedpoints with the help of critical points by generating a plane with eigenvectors and sampling on that plane. 
-        :infile: input file with critical points (String)
-        :outfile: output file with critical points (String)
-        :visualize: to visualize the points or not (Boolean)
+        :infile: input file with jacobian/gradiant (String)
+        :critical_point_infile: input file with critical points (String)
+        :outfile: Name of output file where seed points will be (String)
+        :visualize: To visualize the points or not (Boolean)
+        :show_planes: To show plane or not (Boolean)
+        :show_normals: To show normal or not (Boolean)
         :vectofield: Takes in a vectorfield. If vectorfield present, it will show in visualization (vtkArrayCalculator())
     """
 
     # Load data
     data = np.genfromtxt(infile,dtype=float)
-
-    # Load data
     critical_points = np.genfromtxt(critical_point_infile,dtype=float)
 
     # Find eigenvectors
@@ -148,10 +102,8 @@ def generate_seedpoints_with_plane(infile, critical_point_infile, outfile, visua
 
         indices = [None,None]
         # Get which indices are of interest
-        if(is_pos):
-            indices = [i for i,v in enumerate(eig_val) if v > 0]
-        else:
-            indices = [i for i,v in enumerate(eig_val) if v <= 0]
+        if(is_pos): indices = [i for i,v in enumerate(eig_val) if v > 0]
+        else: indices = [i for i,v in enumerate(eig_val) if v <= 0]
 
         plane_vectors.append(eig_vec[indices].tolist())
 
@@ -160,9 +112,9 @@ def generate_seedpoints_with_plane(infile, critical_point_infile, outfile, visua
     planes = []
 
     for id, vecs in enumerate(plane_vectors):
-
+        if(len(vecs) > 2): # If all three vectors have the same sign
+            vecs.pop()
         v1, v2 = vecs
-
         point = critical_points[id]
 
         # the cross product is a vector normal to the plane
@@ -173,8 +125,7 @@ def generate_seedpoints_with_plane(infile, critical_point_infile, outfile, visua
         })
 
 
-    # ============ VISUAL ====================
-
+    # Visualize
     colors = vtkNamedColors()
 
     # Create point cloud
@@ -182,66 +133,80 @@ def generate_seedpoints_with_plane(infile, critical_point_infile, outfile, visua
     for x,y,z in critical_points:
         points.InsertNextPoint(x, y, z)
 
-    # ============= Original critcial points position ==================
-    cp_polydata = vtkPolyData()
-    cp_polydata.SetPoints(points)
-
-    pointSource = vtkSphereSource()
-    pointSource.SetThetaResolution(10)
-    pointSource.SetPhiResolution(10)
-    pointSource.SetRadius(0.1)
-
-    pGlyph3D = vtkGlyph3D()
-    pGlyph3D.SetSourceConnection(pointSource.GetOutputPort())
-    pGlyph3D.SetInputData(cp_polydata)
-    pGlyph3D.Update()
-
-    # Visualize
-    pMapper = vtkPolyDataMapper()
-    pMapper.SetInputConnection(pGlyph3D.GetOutputPort())
-
-    pActor = vtkActor()
-    pActor.SetMapper(pMapper)
-    pActor.GetProperty().SetColor(colors.GetColor3d('Black'))
+    
+    # Plane generated by eigenvectors
+    plane_actor, plane_glyph = get_eigenvector_plane_actor(points, plane_vectors)
 
 
-    # ======= PLANE GENERATED FROM EIGENVECTORS ========= #
+    if(visualize):
 
-    plane_polydata = vtkPolyData()
-    plane_polydata.SetPoints(points)
+        # Point cloud
+        pointcloud_actor = get_pointcloud_actor(points)
+        # Plane normals
+        normal_actor = get_plane_normal_actor(points, planes)
+        
+        # Add X,Y,Z helper axis
+        transform = vtkTransform()
+        transform.Translate(25.0, -10.0, 0.0)
+        axes = custom_axes(transform)
 
-    # Generate vectors perpendicular to normal so the plane lays correctly
-    # arrayOfPerpNormals = np.array([perpendicular_vector(np.array(p['normal'])).real for p in planes])
-    arrayOfPerpNormals = np.array([np.array(p)[0].real for p in plane_vectors])
-    plane_polydata.GetPointData().SetNormals(numpy_to_vtk(arrayOfPerpNormals))
+        renderer = vtkRenderer()
+        renderWindow = vtkRenderWindow()
+        renderWindow.AddRenderer(renderer)
+        renderWindow.SetSize(1920,1080)
 
-    # Create a plane
-    planeSource = vtkPlaneSource()
-    planeSource.SetXResolution(3)
-    planeSource.SetYResolution(3)
-    planeSource.Update()
+        renderWindowInteractor = vtkRenderWindowInteractor()
+        renderWindowInteractor.SetRenderWindow(renderWindow)
 
-    # Create 3d glyph to map the plane with pointdata
-    glyph = vtkGlyph3D()
-    glyph.SetInputData(plane_polydata)
-    glyph.SetSourceConnection(planeSource.GetOutputPort())
-    glyph.SetVectorModeToUseNormal()
-    glyph.SetScaleFactor(2)
-    glyph.Update()
+        if(show_planes): renderer.AddActor(plane_actor)
+        if(show_normals): renderer.AddActor(normal_actor)
+        if(vectorfield != None):
+            renderer.AddActor(get_vectorfield_actor(vectorfield))
 
-    # Create a mapper and actor
-    mapper = vtkPolyDataMapper()
-    mapper.SetInputData(glyph.GetOutput())
+        renderer.AddActor(axes)
+        renderer.AddActor(pointcloud_actor)
+        renderer.SetBackground(colors.GetColor3d('SlateGray'))  # Background Slate Gray
+        
+        renderWindow.SetWindowName('Plane generation')
+        renderWindow.Render()
+        renderWindowInteractor.Start()
 
-    actor = vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(colors.GetColor3d('Black'))
-    actor.GetProperty().SetOpacity(0.5)
-    actor.GetProperty().SetRepresentationToWireframe()
+    
+    # Generate seedpoint files
+    write_to_file(outfile, plane_glyph)
+    write_to_vtk("plane_highres.vtk", plane_glyph)
 
-    # ================================================================ #
+def write_to_vtk(outfile, glyph):
+    writer = vtkPolyDataWriter()
+    writer.SetInputData(glyph.GetOutput())
+    writer.SetFileName(outfile)
+    writer.Update()
 
-    # Vector Glyphs
+    print(f"Saved seed point structure as .vtu at: '{outfile}'")
+
+def write_to_file(outfile, glyph):
+    """Writes the glyph data into a file
+        :outfile: Name of the file you want to write the file to (String)
+        :glyph: Glyph containing the array data you want to save (vtkGlyph3D())
+    """
+
+    # # Write x,y,z coordinates of critical points
+    writer = vtkSimplePointsWriter()
+    writer.SetDecimalPrecision(5)
+    writer.SetFileName(outfile)
+    writer.SetInputConnection(glyph.GetOutputPort(0))
+    writer.Write()
+
+    print(f"Generated {glyph.GetOutput().GetPointData().GetNumberOfTuples()} seed points in file: '{outfile}'")
+
+
+def get_plane_normal_actor(points, planes):
+    """Returns the actor (vtkRenderingOpenGL) of the normal of the given planes
+        :points: Points where the normal vector lies (vtkPoint())
+        :planes: List of plane objects [{"point": [x1,y1,z1], "normal": [x2,y2,z2]}]
+    """
+
+    colors = vtkNamedColors()
 
     plane_normal_polydata = vtkPolyData()
     plane_normal_polydata.SetPoints(points)
@@ -272,49 +237,128 @@ def generate_seedpoints_with_plane(infile, critical_point_infile, outfile, visua
     normalActor.GetProperty().SetOpacity(1)
     # normalActor.GetProperty().SetRepresentationToWireframe()
 
+    return normalActor
 
-    if(visualize):
-        
-        # Add X,Y,Z helper axis
-        transform = vtkTransform()
-        transform.Translate(25.0, -10.0, 0.0)
-        axes = custom_axes(transform)
+def get_eigenvector_plane_actor(points, plane_vectors, return_glyph=True):
+    """Returns the actor (vtkRenderingOpenGL) of the normal of the given planes vectors. Returns glyph data if wanted.
+        :points: Points where the normal vector lies (vtkPoint())
+        :plane_vectors: List of eigen vectors building up the plane ([[v1,w1],..,[vn,wn]])
+    """
 
-        renderer = vtkRenderer()
-        renderWindow = vtkRenderWindow()
-        renderWindow.AddRenderer(renderer)
-        renderWindow.SetSize(1920,1080)
+    plane_polydata = vtkPolyData()
+    plane_polydata.SetPoints(points)
 
-        renderWindowInteractor = vtkRenderWindowInteractor()
-        renderWindowInteractor.SetRenderWindow(renderWindow)
+    # Generate vectors perpendicular to normal so the plane lays correctly
+    # arrayOfPerpNormals = np.array([perpendicular_vector(np.array(p['normal'])).real for p in planes])
+    arrayOfPerpNormals = np.array([np.array(p)[0].real for p in plane_vectors])
+    plane_polydata.GetPointData().SetNormals(numpy_to_vtk(arrayOfPerpNormals))
 
-        if(vectorfield != None):
-            renderer.AddActor(get_vectorfield(vectorfield))
+    # Create a plane
+    # planeSource = vtkPlaneSource()
+    # planeSource.SetXResolution(3)
+    # planeSource.SetYResolution(3)
+    # planeSource.Update()
 
-        renderer.AddActor(actor)
-        renderer.AddActor(pActor)
-        renderer.AddActor(normalActor)
-        renderer.AddActor(axes)
-        renderer.SetBackground(colors.GetColor3d('SlateGray'))  # Background Slate Gray
-        
-        renderWindow.SetWindowName('Plane generation')
-        renderWindow.Render()
-        renderWindowInteractor.Start()
+    # Create a pentagon
+    planeSource = vtkDiskSource()
+    planeSource.SetInnerRadius(0.1)
+    planeSource.SetOuterRadius(0.5)
+    planeSource.SetRadialResolution(4)
+    planeSource.SetCircumferentialResolution(12)
 
+    # Create 3d glyph to map the plane with pointdata
+    glyph = vtkGlyph3D()
+    glyph.SetInputData(plane_polydata)
+    glyph.SetSourceConnection(planeSource.GetOutputPort())
+    glyph.SetVectorModeToUseNormal()
+    glyph.SetScaleFactor(2)
+    glyph.Update()
+
+    # Create a mapper and actor
+    mapper = vtkPolyDataMapper()
+    mapper.SetInputData(glyph.GetOutput())
+
+    actor = vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(0.,0.,0.)
+    actor.GetProperty().SetOpacity(0.5)
+    actor.GetProperty().SetRepresentationToWireframe()
+    # actor.GetProperty().SetRepresentationToPoints()
+    actor.GetProperty().SetRenderPointsAsSpheres(True)
+
+    if(return_glyph):
+        return(actor, glyph)
+
+    return actor
+
+def get_pointcloud_actor(points):
+    """Returns the actor (vtkRenderingOpenGL) of the points given
+        :points: Points where the critical points lies (vtkPoint())
+    """
     
-    # Write x,y,z coordinates of critical points
-    writer = vtkSimplePointsWriter()
-    writer.SetDecimalPrecision(5)
-    writer.SetFileName(outfile)
-    writer.SetInputConnection(glyph.GetOutputPort(0))
-    writer.Write()
+    cp_polydata = vtkPolyData()
+    cp_polydata.SetPoints(points)
 
-    print(f"Generated {glyph.GetOutput().GetPointData().GetNumberOfTuples()} seed points in file: '{outfile}'")
+    pointSource = vtkSphereSource()
+    pointSource.SetThetaResolution(10)
+    pointSource.SetPhiResolution(10)
+    pointSource.SetRadius(0.1)
 
+    pGlyph3D = vtkGlyph3D()
+    pGlyph3D.SetSourceConnection(pointSource.GetOutputPort())
+    pGlyph3D.SetInputData(cp_polydata)
+    pGlyph3D.Update()
 
-def get_vectorfield(vectorfield):
+    # Visualize
+    pMapper = vtkPolyDataMapper()
+    pMapper.SetInputConnection(pGlyph3D.GetOutputPort())
+
+    pActor = vtkActor()
+    pActor.SetMapper(pMapper)
+    pActor.GetProperty().SetColor(0.,0.,0.)
+    return pActor
+
+def get_sphere_around_points_actor(points, return_glyph=True):
+    """Returns the actor (vtkRenderingOpenGL) of the sphere surrounding a point. Returns glyph data if wanted.
+        :points: Points where the normal vector lies (vtkPoint())
+        :plane_vectors: List of eigen vectors building up the plane ([[v1,w1],..,[vn,wn]])
+    """
+
+    colors = vtkNamedColors()
+
+    polydata = vtkPolyData()
+    polydata.SetPoints(points)
+
+    sphereSource = vtkSphereSource()
+    sphereSource.SetThetaResolution(3)
+    sphereSource.SetPhiResolution(3)
+    sphereSource.SetRadius(1)
+
+    glyph3D = vtkGlyph3D()
+    glyph3D.SetSourceConnection(sphereSource.GetOutputPort())
+    glyph3D.SetInputData(polydata)
+    glyph3D.Update()
+
+    # Visualize seed points
+    mapper = vtkPolyDataMapper()
+    mapper.SetInputConnection(glyph3D.GetOutputPort())
+
+    actor = vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(colors.GetColor3d('Salmon'))
+    actor.GetProperty().SetOpacity(0.5)
+    actor.GetProperty().SetRepresentationToWireframe()
+
+    if(return_glyph):
+        return (actor, glyph3D)
     
+    return actor
 
+def get_vectorfield_actor(vectorfield):
+    """Returns the actor (vtkRenderingOpenGL) of the vectorfield
+        :vectofield: Takes in a vectorfield (vtkArrayCalculator())
+    """
+    
     # Create the glyphs source
     arrowSource = vtkArrowSource()
 
@@ -322,7 +366,7 @@ def get_vectorfield(vectorfield):
     ptMask = vtkMaskPoints()
     ptMask.SetInputConnection(vectorfield.GetOutputPort())
     ptMask.RandomModeOn()
-    ptMask.SetMaximumNumberOfPoints(10000)
+    ptMask.SetMaximumNumberOfPoints(1000)
 
     # Create 3D Glyphs
     glyph3D = vtkGlyph3D()
@@ -345,6 +389,9 @@ def get_vectorfield(vectorfield):
     return actor
 
 def perpendicular_vector(v):
+    """Returns a perpendicular vector
+        :v: vector ([x,y,z])
+    """
     if v[1] == 0 and v[2] == 0:
         if v[0] == 0:
             raise ValueError('zero vector')
@@ -352,9 +399,7 @@ def perpendicular_vector(v):
             return np.cross(v, [0, 1, 0])
     return np.cross(v, [1, 0, 0])
 
-def normalize_complex_arr(a):
-    a_oo = a - a.real.min() - 1j*a.imag.min() # origin offsetted
-    return a_oo/np.abs(a_oo).max()
-    
+
+
 
 
