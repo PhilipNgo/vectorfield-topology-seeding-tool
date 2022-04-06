@@ -12,7 +12,7 @@ from vtk import vtkVectorFieldTopology, vtkMaskPoints, vtkDataSetMapper, vtkGlyp
 from vtkmodules.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 import json
 
-def find_topological_features(vectorfield, bounding_box, visualize=False, show_critical_points = True, show_separator = True, 
+def find_topological_features(vectorfield, visualize=False, show_critical_points = True, show_separator = True, 
 show_vectorfield = False, show_separating_surface = False, show_boundary_switch = False, 
 scale=1.5, max_points = 1000, debug = False, write_file = False):
 
@@ -38,7 +38,7 @@ scale=1.5, max_points = 1000, debug = False, write_file = False):
     vft.SetIntegrationStepUnit(1)
     vft.SetSeparatrixDistance(1)
     vft.SetIntegrationStepSize(1)
-    vft.SetMaxNumSteps(1000)
+    vft.SetMaxNumSteps(3000)
     # print(vft.GetEpsilonCriticalPoint())
     vft.SetComputeSurfaces(show_separating_surface)
     vft.SetUseBoundarySwitchPoints(show_boundary_switch)
@@ -61,16 +61,6 @@ scale=1.5, max_points = 1000, debug = False, write_file = False):
 
         if debug: print("Created vectorfield object.")
         if debug: print("Creating Mappers and Actors..")
-
-        # The bounding box
-        sMapper = vtkDataSetMapper() 
-        sMapper.SetInputConnection(bounding_box.GetOutputPort())
-
-        sActor = vtkActor()
-        sActor.SetMapper(sMapper)
-        sActor.GetProperty().SetColor(0.4, 0.4, 0.4)
-        sActor.GetProperty().SetOpacity(0.1)
-        sActor.GetProperty().SetRepresentationToSurface()
 
         # The critical points
         pointMapper = vtkDataSetMapper()
@@ -134,7 +124,6 @@ scale=1.5, max_points = 1000, debug = False, write_file = False):
         # Renderer
         renderer = vtkRenderer()
         renderer.AddActor(axes)
-        renderer.AddActor(sActor)
         if(show_critical_points): renderer.AddActor(pointActor)
         if(show_separator): renderer.AddActor(lineActor)
         if(show_separating_surface): renderer.AddActor(surfaceActor) # Surface
@@ -161,6 +150,7 @@ scale=1.5, max_points = 1000, debug = False, write_file = False):
             glyph3D.SetSourceConnection(arrowSource.GetOutputPort())
             glyph3D.SetInputConnection(ptMask.GetOutputPort())
             glyph3D.SetVectorModeToUseVector()
+            glyph3D.SetScaleModeToDataScalingOff()
             
             glyph3D.SetScaleFactor(scale)
             glyph3D.Update()
@@ -190,11 +180,6 @@ scale=1.5, max_points = 1000, debug = False, write_file = False):
         # This allows the interactor to initalize itself. It has to be
         # called before an event loop.
         iren.Initialize()
-
-        # We'll zoom in a little by accessing the camera and invoking a "Zoom"
-        # method on it.
-        # renderer.ResetCamera()
-        # renderer.GetActiveCamera().Zoom(1.5)
         renWin.Render()
 
         if debug: print("Created Renderer.")

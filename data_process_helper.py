@@ -231,6 +231,9 @@ def generate_status(grid, outfile, critical_point_infile):
     critical_point_ids = []
     critical_point_cell_ids = []
     critical_point_cell_boundary_ids = []
+    critical_point_x_pos = []
+    critical_point_y_pos = []
+    critical_point_z_pos = []
 
     for position in critical_point_positions:
 
@@ -241,6 +244,9 @@ def generate_status(grid, outfile, critical_point_infile):
         critical_point_ids.append(point_id)
         critical_point_cell_ids.append(cell_id)
         critical_point_cell_boundary_ids.append(cell_point_ids)
+        critical_point_x_pos.append(float(position[0]))
+        critical_point_y_pos.append(float(position[1]))
+        critical_point_z_pos.append(float(position[2]))
 
     # Status for critical point
     critical_point_status = []
@@ -260,6 +266,6 @@ def generate_status(grid, outfile, critical_point_infile):
         
         cell_boundary_status.append(status_list)
 
-    collection_arr = list(zip(critical_point_ids, critical_point_cell_ids, critical_point_cell_boundary_ids, critical_point_status, cell_boundary_status))
+    collection_arr = list(zip(critical_point_x_pos, critical_point_y_pos, critical_point_z_pos, critical_point_ids, critical_point_cell_ids, critical_point_cell_boundary_ids, critical_point_status, cell_boundary_status))
 
-    pd.DataFrame(collection_arr).to_csv(outfile, header=["Point ID", "Cell ID", "Cell Boundary IDs", "Status Point", "Status Boundary"], index=False)
+    pd.DataFrame(collection_arr).to_csv(outfile, header=["X","Y","Z", "Point ID", "Cell ID", "Cell Boundary IDs", "Status Point", "Status Boundary"], index=False)
