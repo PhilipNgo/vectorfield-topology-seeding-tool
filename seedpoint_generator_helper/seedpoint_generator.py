@@ -2,6 +2,7 @@ from enum import Enum
 import logging
 import os
 from typing import List
+import warnings
 import numpy as np
 from vtk import vtkPoints, vtkPolyData, vtkSphereSource, vtkGlyph3D
 from seedpoint_generator_helper import constants, helpers
@@ -45,6 +46,9 @@ class SeedpointGenerator():
 
     def visualize(self) -> None:
         """Starts the rendering"""
+        if(len(self.list_of_actors) == 0):
+            warnings.warn("List of actors is empty. Make sure to update the list of actors with the function update_list_of_actors()")
+
         vtk_helper.start_window(self.list_of_actors)
 
     def save_seedpoints_to_file(self):

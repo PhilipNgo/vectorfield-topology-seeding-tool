@@ -2,7 +2,7 @@
 INTEGRATION_STEP_UNIT = 1
 SEPARATRIX_DISTANCE = 1
 INTEGRATION_STEP_SIZE = 1
-MAX_NUM_STEPS = 3000
+MAX_NUM_STEPS = 2000
 
 # Used in save_critical_points_to_file()
 TYPES = dict([
@@ -15,6 +15,7 @@ TYPES = dict([
 ])
 
 DETAILED_TYPES = dict([
+     (-1,'DEGENERATE_3D'),
      (0,'ATTRACTING_NODE_3D'),
      (1,'ATTRACTING_FOCUS_3D'),
      (2,'NODE_SADDLE_1_3D'),

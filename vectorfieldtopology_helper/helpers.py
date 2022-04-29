@@ -2,12 +2,9 @@ import logging
 from typing import Tuple
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
-    vtkPolyDataMapper,
-    vtkRenderWindow,
-    vtkRenderWindowInteractor,
-    vtkRenderer
+    vtkPolyDataMapper
 )
-from vtk import vtkVectorFieldTopology, vtkMaskPoints, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkSphereSource, vtkSimplePointsWriter, vtkAxesActor, vtkTransform, vtkArrayCalculator, vtkLineIntegralConvolution2D, vtkXMLUnstructuredGridWriter
+from vtk import vtkVectorFieldTopology, vtkMaskPoints, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkSphereSource
 
 def rename_tecplot_header(filename, large_file=False):
     """Renames the variables in the tecplot file to correctly match vtk requirements

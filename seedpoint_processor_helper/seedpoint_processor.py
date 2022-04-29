@@ -1,7 +1,6 @@
 from enum import Enum
 import logging
 import os
-from time import perf_counter
 from typing import List, Optional, Tuple
 import pandas as pd
 from vtk import vtkStreamTracer, vtkPoints, vtkPolyDataMapper, vtkActor, vtkPolyData, vtkImageData
@@ -10,7 +9,7 @@ from seedpoint_processor_helper import constants
 from vectorfieldtopology_helper.helpers import get_sphere_actor
 from vtk_visualization_helper.helpers import start_window
 
-class StreamlineStatus(Enum): 
+class FieldlineStatus(Enum): 
     IMF = 'IMF'
     CLOSED = 'CLOSED'
     OPEN_NORTH = 'OPEN_NORTH'
@@ -67,7 +66,7 @@ class SeedpointProcessor():
         self.seedpoint_info['Y'] = [s[1] for s in self.seedpoints]
         self.seedpoint_info['Z'] = [s[2] for s in self.seedpoints]
         self.seedpoint_info['EarthSide'] = seed_side
-        self.seedpoint_info['StreamlineStatus'] = seed_status
+        self.seedpoint_info['FieldlineStatus'] = seed_status
 
         dirName = 'seed_points'
 
@@ -80,7 +79,7 @@ class SeedpointProcessor():
         self.seedpoint_info.to_csv(f'{dirName}/seedpoint_status.csv', index=False)
         logging.info(f"Saved seedpoint information to '{dirName}/seedpoint_status.csv'")
 
-    def __get_status_seedpoint(self, streamline_points: Tuple[float,float,float]) -> Tuple[EarthSide, StreamlineStatus]:
+    def __get_status_seedpoint(self, streamline_points: Tuple[float,float,float]) -> Tuple[EarthSide, FieldlineStatus]:
         """ Gets the status of a certain streamline """
     
         ux, uy, uz = constants.UPPERBOUND
@@ -105,32 +104,32 @@ class SeedpointProcessor():
             result_side = EarthSide.DAYSIDE
 
         if(not hit_earth_top and not hit_earth_bottom):
-            result_status = StreamlineStatus.IMF
+            result_status = FieldlineStatus.IMF
         elif(hit_earth_top and hit_earth_bottom):
-            result_status = StreamlineStatus.CLOSED
+            result_status = FieldlineStatus.CLOSED
         elif(hit_earth_top and not hit_earth_bottom):
-            result_status = StreamlineStatus.OPEN_NORTH
+            result_status = FieldlineStatus.OPEN_NORTH
         elif(not hit_earth_top and hit_earth_bottom):
-            result_status = StreamlineStatus.OPEN_SOUTH
+            result_status = FieldlineStatus.OPEN_SOUTH
         else:
             logging.info('SOMETHING WRONG HAPPENED')
             raise ValueError()
 
         return (result_side, result_status)
 
-    def visualize(self, side:Optional[EarthSide] = None, status:Optional[StreamlineStatus] = None) -> None:
+    def visualize(self, side:Optional[EarthSide] = None, status:Optional[FieldlineStatus] = None) -> None:
         """Visualize the streamlines and starts the rendering"""
         df = self.seedpoint_info
         
         # If we want a specific side or status
         if(side and status):
-            df = df.loc[(df['EarthSide'] == side) & (df['StreamlineStatus'] == status)]
+            df = df.loc[(df['EarthSide'] == side) & (df['FieldlineStatus'] == status)]
         
         elif(side and not status):
             df = df.loc[(df['EarthSide'] == side)]
         
         elif(not side and status):
-            df = df.loc[(df['StreamlineStatus'] == status)]
+            df = df.loc[(df['FieldlineStatus'] == status)]
 
         seedpos = list(zip(df['X'],df['Y'],df['Z']))
 

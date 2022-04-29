@@ -5,11 +5,12 @@ from enum import Enum, auto
 
 import pandas as pd
 from vectorfieldtopology_helper import constants, helpers
-from vtk import vtkUnstructuredGrid, vtkTecplotReader, vtkVectorFieldTopology, vtkImageData, vtkArrayCalculator, vtkActor
+from vtk import vtkUnstructuredGrid, vtkTecplotReader, vtkVectorFieldTopology, vtkImageData, vtkArrayCalculator, vtkActor, vtkXMLUnstructuredGridReader
 from vtkmodules.util.numpy_support import vtk_to_numpy
 import os
 import numpy as np
 from vtk_visualization_helper import helpers as vtk_helper
+import warnings
 
 logging.basicConfig(level=logging.INFO)
 
@@ -38,20 +39,33 @@ class VectorFieldTopology():
         self.is_debug = value
 
     def read_file(self, filename:str, rename_header:bool = False) -> None:
-        """Reads file and creates vectorfield from given scalars.
+        """Reads file and creates vectorfield from given scalars. Able to process .dat and .vtu files.
         :filename: Path to file (String)
         """
+        # TODO: write this if statement to rename the file header before opening it with vtk.
+        if(rename_header):
+            pass
         
         if(os.path.exists(filename)):
-            reader = vtkTecplotReader()
-            reader.SetFileName(filename)
-            reader.Update()
-            self.data_object.ShallowCopy(reader.GetOutput().GetBlock(0))
-            logging.info("Read file done.") 
+        
+            if(filename.endswith('.dat')):
+                reader = vtkTecplotReader()
+                reader.SetFileName(filename)
+                reader.Update()
+                self.data_object.ShallowCopy(reader.GetOutput().GetBlock(0))
+                logging.info("Read file done.") 
+
+            elif(filename.endswith('.vtu')):
+                reader = vtkXMLUnstructuredGridReader()
+                reader.SetFileName(filename)
+                reader.Update()
+                self.data_object.ShallowCopy(reader.GetOutput())
+                logging.info("Read file done.") 
+
         else:
             raise FileNotFoundError()
 
-    def update_vectorfield(self, scalar_name_x:str, scalar_name_y:str, scalar_name_z:str) -> None:
+    def update_vectorfield_from_scalars(self, scalar_name_x:str, scalar_name_y:str, scalar_name_z:str, noise_factor:float=0.0) -> None:
         """Returns vectorfield data
         :scalar_name_x: Name of x component (String)
         :scalar_name_y: Name of y component (String)
@@ -64,11 +78,24 @@ class VectorFieldTopology():
         vecFieldCalc.AddScalarArrayName(scalar_name_x)
         vecFieldCalc.AddScalarArrayName(scalar_name_y)
         vecFieldCalc.AddScalarArrayName(scalar_name_z)
-        vecFieldCalc.SetFunction(f"{scalar_name_x}*iHat + {scalar_name_y}*jHat + {scalar_name_z}*kHat")
+        
+        # TODO: Remove or not??
+        #noise_string = f"(sqrt({scalar_name_x}^2+{scalar_name_y}^2+{scalar_name_z}^2)*{noise_factor})" # delta b = mag*noise_percent
+        #bx_string = f"({scalar_name_x}+{noise_string}/{scalar_name_x})*iHat"
+        #by_string = f"({scalar_name_y}+{noise_string}/{scalar_name_y})*jHat"
+        #bz_string = f"({scalar_name_z}+{noise_string}/{scalar_name_z})*kHat"
+        
+        vecFieldCalc.SetFunction(f"{scalar_name_x}*iHat+{scalar_name_y}*jHat+{scalar_name_z}*kHat")
         vecFieldCalc.SetResultArrayName("Vectorfield")
         vecFieldCalc.Update()
 
         self.vectorfield = vecFieldCalc.GetOutput()
+
+    def update_vectorfield_from_vectors(self, vectorfield: vtkImageData) -> None:
+        """Returns vectorfield data
+        :vectorfield: vtkImageData or vtkUnstructuredGrid
+        """
+        self.vectorfield = vectorfield
 
     def update_topology_object(self) -> None:
         """Updates vector field topology object. Contains only critical points now.
@@ -180,20 +207,34 @@ class VectorFieldTopology():
         #     dict_writer.writeheader()
         #     dict_writer.writerows(self.critical_points_info)
 
-        
-        
+    def update_list_of_actors(self, show_critical_points:bool=True, show_separator:bool=False, show_vectorfield:bool=False) -> None:
+        """
+        Updates the list of actors with actors that have the current data. Possible to trigger seperate actors.
+        :show_critical_points: Boolean on wether to show critical points or not.
+        :show_saperator: Boolean on wether to show separator or not.
+        :show_vectorfield: Boolean on wether to show vectorfield or not.
+        """
 
-        
+        self.list_of_actors.clear()
 
-    def update_list_of_actors(self) -> None:
-        """Updates the list of actors with actors that have the current data."""
-        critical_point_actor = helpers.get_critical_point_actor(self.topology_object)
-        vectorfield_actor = helpers.get_vector_field_actor(self.vectorfield)
+        if(show_critical_points):
+            critical_point_actor = helpers.get_critical_point_actor(self.topology_object)
+            self.list_of_actors.append(critical_point_actor)
 
-        self.list_of_actors = [critical_point_actor, self.sphere_removed_actor]
+        if(show_separator):
+            separator_actor = helpers.get_separator_actor(self.topology_object)
+            self.list_of_actors.append(separator_actor)
+
+        if(show_vectorfield):
+            vectorfield_actor = helpers.get_vector_field_actor(self.vectorfield)
+            self.list_of_actors.append(vectorfield_actor)
+
 
     def visualize(self) -> None:
         """Starts the rendering"""
+        if(len(self.list_of_actors) == 0):
+            warnings.warn("List of actors is empty. Make sure to update the list of actors with the function update_list_of_actors()")
+
         vtk_helper.start_window(self.list_of_actors)
 
 
