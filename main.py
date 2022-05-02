@@ -26,14 +26,14 @@ def main():
     vft.update_critical_points()
     vft.remove_critical_points_in_sphere(radius=3, center=(0,0,0))
     vft.save_critical_points_to_file()
-    vft.update_list_of_actors(show_critical_points=False, show_separator=False, show_vectorfield=False)
+    vft.update_list_of_actors(show_critical_points=True, show_separator=False, show_vectorfield=False)
     vft.visualize()
     t1_stop = perf_counter()
 
     # # ########################## PART 2: GENERATE SEEDPOINTS ################################
 
     t2_start = perf_counter()
-    sp_generator = SeedpointGenerator(vft.critical_points_info, Template.SPHERICAL)
+    sp_generator = SeedpointGenerator(vft.critical_points_info, Template.SMART)
     sp_generator.update_seed_points()
     sp_generator.save_seedpoints_to_file()
     sp_generator.visualize()

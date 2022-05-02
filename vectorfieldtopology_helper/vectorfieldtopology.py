@@ -1,6 +1,6 @@
 import csv
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, TypedDict
 from enum import Enum, auto
 
 import pandas as pd
@@ -15,16 +15,27 @@ import warnings
 logging.basicConfig(level=logging.INFO)
 
 class CriticalPoint(Enum):
-    X = auto()
-    Y = auto()
-    Z = auto()
+    X = float
+    Y = float
+    Z = float
     GRADIENT = auto()
-    DETAILED_TYPE = auto()
+    DETAILED_TYPE = int
+
+class CriticalPointInfo(Enum):
+    x = float
+    y = float
+    z = float
+    gradient: auto()
+    type: int
+    type_text: str
+    detailed_type: int
+    detailed_type_text: str
+
 
 class VectorFieldTopology():
     def __init__(self) -> None:
-        self.critical_points: List[float] = []
-        self.critical_points_info: List[Dict[CriticalPoint.X, CriticalPoint.Y, CriticalPoint.Z, CriticalPoint.GRADIENT, CriticalPoint.DETAILED_TYPE]] = []
+        self.critical_points: List[Tuple[float, float, float]] = []
+        self.critical_points_info: List[CriticalPointInfo] = []
         self.list_of_actors = []
         self.data_object = vtkUnstructuredGrid()
         self.vectorfield = vtkImageData()

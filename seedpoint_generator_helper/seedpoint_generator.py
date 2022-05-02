@@ -1,29 +1,31 @@
 from enum import Enum
 import logging
 import os
-from typing import List
+from typing import Dict, List, Tuple
 import warnings
 import numpy as np
 from vtk import vtkPoints, vtkPolyData, vtkSphereSource, vtkGlyph3D
 from seedpoint_generator_helper import constants, helpers
 from vtkmodules.util.numpy_support import vtk_to_numpy
 from vtk_visualization_helper import helpers as vtk_helper
+from seedpoint_processor_helper import constants as p_constant
 
 class Template(Enum):
     SPHERICAL = 1
     EIGEN_PLANE = 2
     TRIPPLE_EIGEN_PLANE = 3
+    SMART = 4
 
 class SeedpointGenerator():
 
-    def __init__(self, critical_point_info:List[float], template=Template.SPHERICAL):
+    def __init__(self, critical_point_info:List[Dict], template=Template.SPHERICAL):
         self.critical_points = [[x['x'], x['y'], x['z']] for x in critical_point_info]
         self.gradient = [x['gradient'] for x in critical_point_info]
         self.seed_points:List[float] = []
         self.template = template
         self.list_of_actors = []
 
-    def set_critical_points(self, critical_points: List[float]) -> None:
+    def set_critical_points(self, critical_points: List[Tuple[float, float, float]]) -> None:
         """Set the critical points to new list of critical points
         :critical_points: List of critical points
         """
@@ -43,6 +45,35 @@ class SeedpointGenerator():
         elif(self.template == Template.TRIPPLE_EIGEN_PLANE):
             poly, self.list_of_actors = self.__get_tripple_plane(show_normal=False)
             self.seed_points = vtk_to_numpy(poly.GetPoints().GetData())
+
+        elif(self.template == Template.SMART):
+            self.seed_points.clear()
+            self.list_of_actors.clear()
+
+            # Get dayside and nightside.
+            critical_points_dayside_position = np.array([ cp for cp in self.critical_points if cp[0] >= p_constant.DAYSIDE_NIGHTSIDE_THRESHOLD ])
+            critical_points_nightside_info = [ (cp,ind) for ind, cp in enumerate(self.critical_points) if cp[0] < p_constant.DAYSIDE_NIGHTSIDE_THRESHOLD ]
+            critical_point_nighside_position = np.array([i[0] for i in critical_points_nightside_info])
+            critical_point_nightside_gradient = np.array([self.gradient[i[1]] for i in critical_points_nightside_info])
+
+            # Get planes and glyphs where the seedpoint lies
+            glyphs = self.__get_spherical_glyph_from_critical_points(critical_points_dayside_position)
+            poly, actors = self.__get_tripple_plane_from_critical_points(critical_point_nightside_gradient, critical_point_nighside_position)
+
+            seed_dayside = vtk_to_numpy(glyphs.GetOutput().GetPoints().GetData())
+            seed_nightside = vtk_to_numpy(poly.GetPoints().GetData())
+
+            self.seed_points = np.concatenate([seed_dayside, seed_nightside])
+            print(self.seed_points)
+
+            # Update list of actors
+            dayside_actor = helpers.get_sphere_around_points_actor(critical_points_dayside_position)
+            self.list_of_actors.append(dayside_actor)
+            for nightside_actor in actors:
+                self.list_of_actors.append(nightside_actor)
+            
+
+
 
     def visualize(self) -> None:
         """Starts the rendering"""
@@ -65,10 +96,10 @@ class SeedpointGenerator():
 
         np.savetxt(f"{dirName}/seed_points.txt", self.seed_points, fmt='%1.5f')
 
-    def __get_spherical_glyph(self) -> vtkGlyph3D:
-        """Return glyph that contains structure of seedpoints. This case, a spheres surrounding the critical points"""
+
+    def __get_spherical_glyph_from_critical_points(self, critical_points: List) -> vtkGlyph3D:
         points = vtkPoints()
-        for x,y,z in self.critical_points:
+        for x,y,z in critical_points:
             points.InsertNextPoint(x, y, z)
         
         polydata = vtkPolyData()
@@ -85,16 +116,16 @@ class SeedpointGenerator():
         glyph3D.Update()
 
         return glyph3D
+    
+    def __get_spherical_glyph(self) -> vtkGlyph3D:
+        """Return glyph that contains structure of seedpoints. This case, a spheres surrounding the critical points"""
+        return self.__get_spherical_glyph_from_critical_points(self.critical_points)
 
-    def __get_plane(self) -> vtkGlyph3D:
-        pass
         
-
-    def __get_tripple_plane(self, show_normal=False) -> vtkPolyData:
-        
+    def __get_tripple_plane_from_critical_points(self, gradients:List[float], critical_points:List[Tuple[float,float,float]], show_normal=False) -> vtkPolyData:
         list_of_eigenvectors = []
 
-        for jacobian in self.gradient:
+        for jacobian in gradients:
             
             _, eig_vec = np.linalg.eig(jacobian.reshape(3,3))
             list_of_eigenvectors.append(eig_vec.tolist())
@@ -103,7 +134,7 @@ class SeedpointGenerator():
         
         # Create point cloud
         points = vtkPoints()
-        for point, vecs in zip(self.critical_points, list_of_eigenvectors):
+        for point, vecs in zip(critical_points, list_of_eigenvectors):
 
             for vec in vecs: 
 
@@ -137,6 +168,13 @@ class SeedpointGenerator():
             list_of_plane_actors.append(normals_actor)
 
         return cp_polydata, list_of_plane_actors
+
+    def __get_tripple_plane(self, show_normal=False) -> vtkPolyData:
+        return self.__get_tripple_plane_from_critical_points(self.gradient, self.critical_points, show_normal)
+        
+        
+    def __get_plane(self) -> vtkGlyph3D:
+        pass
 
     
 
