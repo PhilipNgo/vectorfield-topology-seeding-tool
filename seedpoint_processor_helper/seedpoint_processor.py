@@ -2,11 +2,14 @@ from enum import Enum
 import logging
 import os
 from typing import List, Optional, Tuple
+import warnings
+import numpy as np
 import pandas as pd
 from vtk import vtkStreamTracer, vtkPoints, vtkPolyDataMapper, vtkActor, vtkPolyData, vtkImageData
 from vtkmodules.util.numpy_support import vtk_to_numpy
 from seedpoint_processor_helper import constants
 from vectorfieldtopology_helper.helpers import get_sphere_actor
+from vectorfieldtopology_helper.vectorfieldtopology import CriticalPoint
 from vtk_visualization_helper.helpers import start_window
 
 class FieldlineStatus(Enum): 
@@ -22,51 +25,59 @@ class EarthSide(Enum):
 
 class SeedpointProcessor():
 
-    def __init__(self, seedpoints: List[float], vectorfield: vtkImageData):
-        self.seedpoints = seedpoints
+    def __init__(self, seed_critical_pair: List[Tuple[List[Tuple[float,float,float]], List[Tuple[float,float,float]]]], vectorfield: vtkImageData):
+        #self.seedpoints = seedpoints
+        self.seed_critical_pair = seed_critical_pair
+        self.seedpoints = []
+        for _, seeds in seed_critical_pair:
+            for seed in seeds:
+                self.seedpoints.append(seed)
+                
         self.vectorfield = vectorfield
         self.seedpoint_info = pd.DataFrame()
 
-    def generate_seedpoint_info_csv(self) -> None:
-        """ Save seedpoints information to a csv file"""
+    
 
-        seed_side = []
-        seed_status = []
+    def remove_useless_seeds(self, level:int):
+        """
+        Removes seedpoints where the FieldlineStatus doesn't change. 
+        :level: How strictly it removes is dependent on level (1-4)
+        level = 1: Removes seedpoints if all the status are the same
+        level = 2: Removes seedpoints if it only contains 2 types
+        level = 3: Removes seedpoints if it only contains 3 types
+        level = 4: Removes seedpoints if it doesn't contain all types
+        """
+        if(level > 4 or level < 1):
+            warnings.warn("Level should be between 1-4")
 
-        logging.info(f"Generating seedpoint information..")
+        else:
 
-        for i, seed in enumerate(self.seedpoints):
-           
-            seeds = vtkPoints()
-            seeds.InsertNextPoint(seed)
-                
-            poly = vtkPolyData()
-            poly.SetPoints(seeds)
+            self.seedpoint_info['CriticalPoint'] = self.seedpoint_info['CriticalPoint'].apply(lambda x: str(x))
+            unique_seedtypes_df = self.seedpoint_info.drop_duplicates(['CriticalPoint', 'FieldlineStatus'])
+            counter_df = unique_seedtypes_df.groupby(['CriticalPoint']).size().reset_index(name='counts')
+            list_of_critical_points_to_remove = counter_df.loc[counter_df['counts'] < level]['CriticalPoint'].to_list()
 
-            streamline = vtkStreamTracer()
-            streamline.SetInputData(self.vectorfield)
-            streamline.SetSourceData(poly)
-            streamline.SetMaximumPropagation(200)
-            streamline.SetInitialIntegrationStep(.2)
-            streamline.SetIntegrationDirectionToBoth()
-            streamline.Update()
+            self.seedpoint_info = self.seedpoint_info[~self.seedpoint_info['CriticalPoint'].isin(list_of_critical_points_to_remove)] 
+            self.seedpoints = list(zip(self.seedpoint_info['X'].to_list(),self.seedpoint_info['Y'].to_list(),self.seedpoint_info['Z'].to_list()))
 
-            streamline_points = vtk_to_numpy(streamline.GetOutput().GetPoints().GetData())
+            logging.info(f"Removed {len(list_of_critical_points_to_remove)} critical points with their corresponding seedpoints")
 
-            if(len(streamline_points) > 0):
-                side, status = self.__get_status_seedpoint(streamline_points)
-                seed_side.append(side)
-                seed_status.append(status)
-            else:
-                seed_side.append('null')
-                seed_status.append('null')
-                logging.debug(f"Index {i} has length zero")
+    def save_seed_points_to_file(self):
+        """
+        Creates seed_points directory with critical points as txt file and critical point information as a csv file
+        """
+        dirName = 'seed_points'
 
-        self.seedpoint_info['X'] = [s[0] for s in self.seedpoints]
-        self.seedpoint_info['Y'] = [s[1] for s in self.seedpoints]
-        self.seedpoint_info['Z'] = [s[2] for s in self.seedpoints]
-        self.seedpoint_info['EarthSide'] = seed_side
-        self.seedpoint_info['FieldlineStatus'] = seed_status
+        if not os.path.exists(dirName):
+            os.mkdir(dirName)
+            logging.info(f"Directory {dirName} created.")
+        else:    
+            logging.info(f"Directory {dirName} already exists.")
+
+        np.savetxt(f"{dirName}/seed_points.txt", self.seedpoints, fmt='%1.5f')
+    
+    def save_seed_point_info_to_file(self) -> None:
+        """Save seedpoints information to a csv file"""
 
         dirName = 'seed_points'
 
@@ -78,6 +89,59 @@ class SeedpointProcessor():
 
         self.seedpoint_info.to_csv(f'{dirName}/seedpoint_status.csv', index=False)
         logging.info(f"Saved seedpoint information to '{dirName}/seedpoint_status.csv'")
+
+
+    def update_seed_point_info(self) -> None:
+        """
+        Updates seedpoint information based on seedpoints and critical points. 
+        Information is a dataframe containing: 'FieldlineStatus', 'EarthSide', 'X', 'Y', 'Z', 'CriticalPoint'.
+        """
+
+        seed_side = []
+        seed_status = []
+        critical_point_location = []
+
+        logging.info(f"Generating seedpoint information..")
+
+        for i, (critical_point, seed_points) in enumerate(self.seed_critical_pair):
+            
+            for seed in seed_points:
+
+                seeds = vtkPoints()
+                seeds.InsertNextPoint(seed)
+                    
+                poly = vtkPolyData()
+                poly.SetPoints(seeds)
+
+                streamline = vtkStreamTracer()
+                streamline.SetInputData(self.vectorfield)
+                streamline.SetSourceData(poly)
+                streamline.SetMaximumPropagation(200)
+                streamline.SetInitialIntegrationStep(.2)
+                streamline.SetIntegrationDirectionToBoth()
+                streamline.Update()
+
+                streamline_points = vtk_to_numpy(streamline.GetOutput().GetPoints().GetData())
+
+                if(len(streamline_points) > 0):
+                    side, status = self.__get_status_seedpoint(streamline_points)
+                    seed_side.append(side)
+                    seed_status.append(status)
+                    critical_point_location.append(critical_point)
+                else:
+                    seed_side.append('null')
+                    seed_status.append('null')
+                    critical_point_location.append('null')
+                    logging.debug(f"Index {i} has length zero")
+
+        self.seedpoint_info['X'] = [s[0] for s in self.seedpoints]
+        self.seedpoint_info['Y'] = [s[1] for s in self.seedpoints]
+        self.seedpoint_info['Z'] = [s[2] for s in self.seedpoints]
+        self.seedpoint_info['EarthSide'] = seed_side
+        self.seedpoint_info['FieldlineStatus'] = seed_status
+        self.seedpoint_info['CriticalPoint'] = critical_point_location
+
+       
 
     def __get_status_seedpoint(self, streamline_points: Tuple[float,float,float]) -> Tuple[EarthSide, FieldlineStatus]:
         """ Gets the status of a certain streamline """

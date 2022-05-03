@@ -25,11 +25,11 @@ class CriticalPointInfo(Enum):
     x = float
     y = float
     z = float
-    gradient: auto()
-    type: int
-    type_text: str
-    detailed_type: int
-    detailed_type_text: str
+    gradient = auto()
+    type = int
+    type_text = str
+    detailed_type = int
+    detailed_type_text = str
 
 
 class VectorFieldTopology():
@@ -49,13 +49,20 @@ class VectorFieldTopology():
         """
         self.is_debug = value
 
-    def read_file(self, filename:str, rename_header:bool = False) -> None:
-        """Reads file and creates vectorfield from given scalars. Able to process .dat and .vtu files.
+    def read_file(self, filename:str, rename_xyz:bool = False) -> None:
+        """
+        Reads file and creates vectorfield from given scalars. Able to process .dat and .vtu files.
         :filename: Path to file (String)
         """
-        # TODO: write this if statement to rename the file header before opening it with vtk.
-        if(rename_header):
-            pass
+        # Write this if statement to rename the file header before opening it with vtk, since vtk needs X,Y,Z variables.
+        if(rename_xyz):
+            a_file = open(filename, "r")
+            list_of_lines = a_file.readlines()
+            list_of_lines[1] = list_of_lines[1].replace("X [R]", "X").replace("Y [R]", "Y").replace("Z [R]", "Z")
+
+            a_file = open(filename, "w")
+            a_file.writelines(list_of_lines)
+            a_file.close()
         
         if(os.path.exists(filename)):
         
@@ -96,7 +103,7 @@ class VectorFieldTopology():
         #by_string = f"({scalar_name_y}+{noise_string}/{scalar_name_y})*jHat"
         #bz_string = f"({scalar_name_z}+{noise_string}/{scalar_name_z})*kHat"
         
-        vecFieldCalc.SetFunction(f"{scalar_name_x}*iHat+{scalar_name_y}*jHat+{scalar_name_z}*kHat")
+        vecFieldCalc.SetFunction(f'"{scalar_name_x}"*iHat+"{scalar_name_y}"*jHat+"{scalar_name_z}"*kHat')
         vecFieldCalc.SetResultArrayName("Vectorfield")
         vecFieldCalc.Update()
 
@@ -213,11 +220,6 @@ class VectorFieldTopology():
         except IOError as io:
             print('\n',io)
 
-        # with open(f'{dirName}/critical_point_info.csv', 'w', newline='/n') as output_file:
-        #     dict_writer = csv.DictWriter(output_file, keys)
-        #     dict_writer.writeheader()
-        #     dict_writer.writerows(self.critical_points_info)
-
     def update_list_of_actors(self, show_critical_points:bool=True, show_separator:bool=False, show_vectorfield:bool=False) -> None:
         """
         Updates the list of actors with actors that have the current data. Possible to trigger seperate actors.
@@ -239,6 +241,8 @@ class VectorFieldTopology():
         if(show_vectorfield):
             vectorfield_actor = helpers.get_vector_field_actor(self.vectorfield)
             self.list_of_actors.append(vectorfield_actor)
+
+        self.list_of_actors.append(self.sphere_removed_actor)
 
 
     def visualize(self) -> None:

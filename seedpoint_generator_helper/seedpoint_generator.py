@@ -23,7 +23,9 @@ class SeedpointGenerator():
         self.gradient = [x['gradient'] for x in critical_point_info]
         self.seed_points:List[float] = []
         self.template = template
+        self.seed_critical_pair = []
         self.list_of_actors = []
+        
 
     def set_critical_points(self, critical_points: List[Tuple[float, float, float]]) -> None:
         """Set the critical points to new list of critical points
@@ -37,6 +39,8 @@ class SeedpointGenerator():
         if(self.template == Template.SPHERICAL):
             glyphs = self.__get_spherical_glyph()
             self.seed_points = vtk_to_numpy(glyphs.GetOutput().GetPoints().GetData())
+            self.seed_critical_pair = self.__get_seed_point_critical_point_pair(self.critical_points, self.seed_points)
+
             actor = helpers.get_sphere_around_points_actor(self.critical_points)
             self.list_of_actors = [actor]
         elif(self.template == Template.EIGEN_PLANE):
@@ -45,6 +49,7 @@ class SeedpointGenerator():
         elif(self.template == Template.TRIPPLE_EIGEN_PLANE):
             poly, self.list_of_actors = self.__get_tripple_plane(show_normal=False)
             self.seed_points = vtk_to_numpy(poly.GetPoints().GetData())
+            self.seed_critical_pair = self.__get_seed_point_critical_point_pair(self.critical_points, self.seed_points)
 
         elif(self.template == Template.SMART):
             self.seed_points.clear()
@@ -63,8 +68,18 @@ class SeedpointGenerator():
             seed_dayside = vtk_to_numpy(glyphs.GetOutput().GetPoints().GetData())
             seed_nightside = vtk_to_numpy(poly.GetPoints().GetData())
 
+            # Generate pair information to know which seed points corresponds to which critical point
+            seed_critical_pair_dayside = self.__get_seed_point_critical_point_pair(critical_points_dayside_position, seed_dayside)
+            seed_critical_pair_nightside = self.__get_seed_point_critical_point_pair(critical_point_nighside_position, seed_nightside)
+
+            # Update seedpoints and seedpoint pairs
+            self.seed_critical_pair = np.concatenate([np.array(seed_critical_pair_dayside, dtype=object), np.array(seed_critical_pair_nightside, dtype=object)])
             self.seed_points = np.concatenate([seed_dayside, seed_nightside])
-            print(self.seed_points)
+
+            # TODO: REMOVE LATER, THIS IS FOR DEBUG:
+    
+            with open('seed_critical_pair.txt', 'w') as fp:
+                fp.write('\n'.join('{} {}'.format(x[0],x[1]) for x in self.seed_critical_pair))
 
             # Update list of actors
             dayside_actor = helpers.get_sphere_around_points_actor(critical_points_dayside_position)
@@ -74,7 +89,6 @@ class SeedpointGenerator():
             
 
 
-
     def visualize(self) -> None:
         """Starts the rendering"""
         if(len(self.list_of_actors) == 0):
@@ -82,7 +96,7 @@ class SeedpointGenerator():
 
         vtk_helper.start_window(self.list_of_actors)
 
-    def save_seedpoints_to_file(self):
+    def save_seed_points_to_file(self):
         """
         Creates seed_points directory with critical points as txt file and critical point information as a csv file
         """
@@ -96,8 +110,18 @@ class SeedpointGenerator():
 
         np.savetxt(f"{dirName}/seed_points.txt", self.seed_points, fmt='%1.5f')
 
+    def __get_seed_point_critical_point_pair(self, critical_points:List[Tuple[float, float, float]], seedpoints: List[Tuple[float, float, float]]):
+        
+        if(len(critical_points) > 0):
+            #print(seedpoints)
+            seed_point_chunks = np.array_split(np.array(seedpoints), len(critical_points))
 
-    def __get_spherical_glyph_from_critical_points(self, critical_points: List) -> vtkGlyph3D:
+            return list(zip(critical_points, seed_point_chunks))
+        else:
+            warnings.warn("Zero critical points.. ")
+            return []
+
+    def __get_spherical_glyph_from_critical_points(self, critical_points: List[Tuple[float, float, float]]) -> vtkGlyph3D:
         points = vtkPoints()
         for x,y,z in critical_points:
             points.InsertNextPoint(x, y, z)
