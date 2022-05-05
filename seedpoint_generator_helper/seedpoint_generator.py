@@ -4,9 +4,11 @@ import os
 from typing import Dict, List, Tuple
 import warnings
 import numpy as np
+import pandas as pd
 from vtk import vtkPoints, vtkPolyData, vtkSphereSource, vtkGlyph3D
 from seedpoint_generator_helper import constants, helpers
 from vtkmodules.util.numpy_support import vtk_to_numpy
+from vectorfieldtopology_helper.vectorfieldtopology import CriticalPointInfo
 from vtk_visualization_helper import helpers as vtk_helper
 from seedpoint_processor_helper import constants as p_constant
 
@@ -15,41 +17,81 @@ class Template(Enum):
     EIGEN_PLANE = 2
     TRIPPLE_EIGEN_PLANE = 3
     SMART = 4
+    USER_CHOICE = 5
 
 class SeedpointGenerator():
 
-    def __init__(self, critical_point_info:List[Dict], template=Template.SPHERICAL):
-        self.critical_points = [[x['x'], x['y'], x['z']] for x in critical_point_info]
-        self.gradient = [x['gradient'] for x in critical_point_info]
+    def __init__(self):
+        """
+        Init function
+        :critical_point_info: Contains information about critical point. Position, gradient and type
+        :template: Contains the seedpoint template, If the template is Tempate.USER_CHOICE, then template fire is required.
+        ::
+        """
+        self.critical_points = []
+        self.gradient = []
         self.seed_points:List[float] = []
-        self.template = template
+        self.template = None
         self.seed_critical_pair = []
         self.list_of_actors = []
-        
 
-    def set_critical_points(self, critical_points: List[Tuple[float, float, float]]) -> None:
+    def set_template(self, template: Template):
+        """Sets the template value"""
+        self.template = template
+
+    def set_custom_template(self, template_filename:str):
+        """Sets the template value based on custom txt file"""
+
+        self.template = Template.USER_CHOICE
+
+        if(os.path.exists(template_filename)):
+            self.template_filename = template_filename
+        else:
+            raise FileNotFoundError("File not found..")
+        
+    def load_critical_point_info(self, critical_point_info_filename:str) -> None:
+        """Loads a csv file containing the critical_point_info"""
+        if(os.path.exists(critical_point_info_filename)):
+            df = pd.read_csv('critical_points/critical_point_info.csv')
+            critical_point_info = df.to_dict('records')
+
+            self.critical_points = [[x['x'], x['y'], x['z']] for x in critical_point_info]
+            self.gradient = [x['gradient'] for x in critical_point_info]
+        else:
+            raise FileNotFoundError("File not found..")
+
+    def set_critical_point_info(self, critical_point_info: List[CriticalPointInfo]) -> None:
         """Set the critical points to new list of critical points
         :critical_points: List of critical points
         """
-        self.critical_points = critical_points
+        self.critical_points = [[x['x'], x['y'], x['z']] for x in critical_point_info]
+        self.gradient = [x['gradient'] for x in critical_point_info]
 
     def update_seed_points(self) -> None:
         """ Generates seedpoints based on critical points"""
 
         if(self.template == Template.SPHERICAL):
+            # Generate seedpoint by sampling a sphere around the critical point
             glyphs = self.__get_spherical_glyph()
             self.seed_points = vtk_to_numpy(glyphs.GetOutput().GetPoints().GetData())
             self.seed_critical_pair = self.__get_seed_point_critical_point_pair(self.critical_points, self.seed_points)
-
             actor = helpers.get_sphere_around_points_actor(self.critical_points)
             self.list_of_actors = [actor]
         elif(self.template == Template.EIGEN_PLANE):
             print("Doing fun eigenplane stuff")
             pass
         elif(self.template == Template.TRIPPLE_EIGEN_PLANE):
+            # Generate seedpoint by sampling the planes created by the eigen vector of the critical point as the normal of the planes.
             poly, self.list_of_actors = self.__get_tripple_plane(show_normal=False)
             self.seed_points = vtk_to_numpy(poly.GetPoints().GetData())
             self.seed_critical_pair = self.__get_seed_point_critical_point_pair(self.critical_points, self.seed_points)
+
+        elif(self.template == Template.USER_CHOICE):
+            # Generate seedpoint by sampling the template given by the user.
+            poly = self.__get_custom_seedpoints_from_file_template()
+            self.seed_points = vtk_to_numpy(poly.GetPoints().GetData())
+            actor = helpers.get_points_actor(poly.GetPoints())
+            self.list_of_actors = [actor]
 
         elif(self.template == Template.SMART):
             self.seed_points.clear()
@@ -76,16 +118,14 @@ class SeedpointGenerator():
             self.seed_critical_pair = np.concatenate([np.array(seed_critical_pair_dayside, dtype=object), np.array(seed_critical_pair_nightside, dtype=object)])
             self.seed_points = np.concatenate([seed_dayside, seed_nightside])
 
-            # TODO: REMOVE LATER, THIS IS FOR DEBUG:
-    
-            with open('seed_critical_pair.txt', 'w') as fp:
-                fp.write('\n'.join('{} {}'.format(x[0],x[1]) for x in self.seed_critical_pair))
-
             # Update list of actors
             dayside_actor = helpers.get_sphere_around_points_actor(critical_points_dayside_position)
             self.list_of_actors.append(dayside_actor)
             for nightside_actor in actors:
                 self.list_of_actors.append(nightside_actor)
+        else:
+            raise ValueError("No template has been selected. To update template, use set_template() function")
+            warnings.warn("No template has been selected..")
             
 
 
@@ -196,7 +236,23 @@ class SeedpointGenerator():
     def __get_tripple_plane(self, show_normal=False) -> vtkPolyData:
         return self.__get_tripple_plane_from_critical_points(self.gradient, self.critical_points, show_normal)
         
-        
+    
+    def __get_custom_seedpoints_from_file_template(self):
+
+        custom_template = np.loadtxt(self.template_filename)
+
+        seedpoints = vtkPoints()
+
+        for cp in self.critical_points:
+            for t in custom_template:
+                res = np.add(cp,t)
+                seedpoints.InsertNextPoint(res[0],res[1],res[2])
+                
+        cp_polydata = vtkPolyData()
+        cp_polydata.SetPoints(seedpoints)
+
+        return cp_polydata
+
     def __get_plane(self) -> vtkGlyph3D:
         pass
 

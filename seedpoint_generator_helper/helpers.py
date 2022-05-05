@@ -139,6 +139,33 @@ def get_plane_normal_actor(points, planes):
 
     return normalActor
 
+def get_points_actor(points):
+
+    colors = vtkNamedColors()
+
+    polydata = vtkPolyData()
+    polydata.SetPoints(points)
+
+    sphereSource = vtkSphereSource()
+    sphereSource.SetThetaResolution(10)
+    sphereSource.SetPhiResolution(10)
+    sphereSource.SetRadius(0.1)
+
+    glyph3D = vtkGlyph3D()
+    glyph3D.SetSourceConnection(sphereSource.GetOutputPort())
+    glyph3D.SetInputData(polydata)
+    glyph3D.Update()
+
+    mapper = vtkPolyDataMapper()
+    mapper.SetInputConnection(glyph3D.GetOutputPort())
+
+    actor = vtkActor()
+    actor.GetProperty().SetColor(colors.GetColor3d("Black"))
+    actor.GetProperty().SetOpacity(1)
+    actor.SetMapper(mapper)
+
+    return actor
+
 def rotation_matrix_from_vectors(vec1, vec2):
     """ Find the rotation matrix that aligns vec1 to vec2
     :param vec1: A 3d "source" vector

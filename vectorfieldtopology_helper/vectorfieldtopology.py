@@ -1,6 +1,6 @@
 import csv
 import logging
-from typing import Dict, List, Tuple, TypedDict
+from typing import Dict, List, Tuple
 from enum import Enum, auto
 
 import pandas as pd

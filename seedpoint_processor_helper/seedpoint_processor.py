@@ -9,7 +9,6 @@ from vtk import vtkStreamTracer, vtkPoints, vtkPolyDataMapper, vtkActor, vtkPoly
 from vtkmodules.util.numpy_support import vtk_to_numpy
 from seedpoint_processor_helper import constants
 from vectorfieldtopology_helper.helpers import get_sphere_actor
-from vectorfieldtopology_helper.vectorfieldtopology import CriticalPoint
 from vtk_visualization_helper.helpers import start_window
 
 class FieldlineStatus(Enum): 
@@ -25,20 +24,49 @@ class EarthSide(Enum):
 
 class SeedpointProcessor():
 
-    def __init__(self, seed_critical_pair: List[Tuple[List[Tuple[float,float,float]], List[Tuple[float,float,float]]]], vectorfield: vtkImageData):
+    def __init__(self):
         #self.seedpoints = seedpoints
-        self.seed_critical_pair = seed_critical_pair
+        self.seed_critical_pair = None
         self.seedpoints = []
+        
+        self.seedpoint_info = pd.DataFrame()
+
+    def set_seed_critical_pair(self, seed_critical_pair: List[Tuple[List[Tuple[float,float,float]], List[Tuple[float,float,float]]]]) -> None:
+        """Sets the seedpoints and seedpoint/criticalpoint pairs"""
+        self.seed_critical_pair = seed_critical_pair
+        
         for _, seeds in seed_critical_pair:
             for seed in seeds:
                 self.seedpoints.append(seed)
                 
+
+    def set_vector_field_domain(self, vectorfield: vtkImageData) -> None:
+        """Sets the vectorfield"""
         self.vectorfield = vectorfield
-        self.seedpoint_info = pd.DataFrame()
+
+    def filter_seeds(self, side:Optional[EarthSide] = None, status:Optional[FieldlineStatus] = None):
+        """Filters the seedpoints to the ones we want."""
+
+        self.seedpoint_info
+
+        if(side and status):
+            self.seedpoint_info = self.seedpoint_info.loc[(self.seedpoint_info['EarthSide'] == side) & (self.seedpoint_info['FieldlineStatus'] == status)]
+        
+        elif(side and not status):
+            self.seedpoint_info = self.seedpoint_info.loc[(self.seedpoint_info['EarthSide'] == side)]
+        
+        elif(not side and status):
+            self.seedpoint_info = self.seedpoint_info.loc[(self.seedpoint_info['FieldlineStatus'] == status)]
+
+        else:
+            warnings.warn("Unused filter function..")
+
+        self.seedpoints = list(zip(self.seedpoint_info['X'].to_list(),self.seedpoint_info['Y'].to_list(),self.seedpoint_info['Z'].to_list()))
+
 
     
 
-    def remove_useless_seeds(self, level:int):
+    def remove_useless_seed_points(self, level:int):
         """
         Removes seedpoints where the FieldlineStatus doesn't change. 
         :level: How strictly it removes is dependent on level (1-4)
@@ -48,7 +76,7 @@ class SeedpointProcessor():
         level = 4: Removes seedpoints if it doesn't contain all types
         """
         if(level > 4 or level < 1):
-            warnings.warn("Level should be between 1-4")
+            raise ValueError("Level should be between 1-4")
 
         else:
 
