@@ -38,7 +38,8 @@ class SeedpointProcessor():
         for _, seeds in seed_critical_pair:
             for seed in seeds:
                 self.seedpoints.append(seed)
-                
+        
+        logging.info("Updated seed_critical_pair")        
 
     def set_vector_field_domain(self, vectorfield: vtkImageData) -> None:
         """Sets the vectorfield"""

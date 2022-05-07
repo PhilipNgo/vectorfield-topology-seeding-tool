@@ -55,8 +55,8 @@ class SeedpointGenerator():
             df = pd.read_csv('critical_points/critical_point_info.csv')
             critical_point_info = df.to_dict('records')
 
-            self.critical_points = [[x['x'], x['y'], x['z']] for x in critical_point_info]
-            self.gradient = [x['gradient'] for x in critical_point_info]
+            self.critical_points = [[x['X'], x['Y'], x['Z']] for x in critical_point_info]
+            self.gradient = [x['Gradient'] for x in critical_point_info]
         else:
             raise FileNotFoundError("File not found..")
 
@@ -64,8 +64,8 @@ class SeedpointGenerator():
         """Set the critical points to new list of critical points
         :critical_points: List of critical points
         """
-        self.critical_points = [[x['x'], x['y'], x['z']] for x in critical_point_info]
-        self.gradient = [x['gradient'] for x in critical_point_info]
+        self.critical_points = [[x['X'], x['Y'], x['Z']] for x in critical_point_info]
+        self.gradient = [x['Gradient'] for x in critical_point_info]
 
     def update_seed_points(self) -> None:
         """ Generates seedpoints based on critical points"""
@@ -90,6 +90,7 @@ class SeedpointGenerator():
             # Generate seedpoint by sampling the template given by the user.
             poly = self.__get_custom_seedpoints_from_file_template()
             self.seed_points = vtk_to_numpy(poly.GetPoints().GetData())
+            self.seed_critical_pair = self.__get_seed_point_critical_point_pair(self.critical_points, self.seed_points)
             actor = helpers.get_points_actor(poly.GetPoints())
             self.list_of_actors = [actor]
 

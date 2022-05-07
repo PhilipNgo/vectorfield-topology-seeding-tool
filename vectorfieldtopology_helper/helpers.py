@@ -4,7 +4,7 @@ from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkPolyDataMapper
 )
-from vtk import vtkVectorFieldTopology, vtkMaskPoints, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkSphereSource
+from vtk import vtkVectorFieldTopology, vtkMaskPoints, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkSphereSource, vtkNamedColors
 
 def rename_tecplot_header(filename, large_file=False):
     """Renames the variables in the tecplot file to correctly match vtk requirements
@@ -36,13 +36,14 @@ def rename_tecplot_header(filename, large_file=False):
 
 def get_critical_point_actor(vft: vtkVectorFieldTopology) -> vtkActor:
     # The critical points
+    colors = vtkNamedColors()
     pointMapper = vtkDataSetMapper()
     pointMapper.SetInputConnection(vft.GetOutputPort(0))
 
     pointActor = vtkActor()
     pointActor.SetMapper(pointMapper)
-    pointActor.GetProperty().SetColor(0., 1., 0.)
-    pointActor.GetProperty().SetPointSize(10.)
+    pointActor.GetProperty().SetColor(colors.GetColor3d("Red"))
+    pointActor.GetProperty().SetPointSize(5.)
     pointActor.GetProperty().SetRenderPointsAsSpheres(True)
     return pointActor
 

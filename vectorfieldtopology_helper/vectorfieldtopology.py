@@ -147,14 +147,14 @@ class VectorFieldTopology():
 
             # Fill critical point info list
             self.critical_points_info.append({
-                'x': critial_point[0],
-                'y': critial_point[1],
-                'z': critial_point[2],
-                'gradient': np.array(gradient),
-                'type': cp_type,
-                'type_text': str(constants.TYPES[int(cp_type)]),
-                'detailed_type': detail_type,
-                'detailed_type_text': str(constants.DETAILED_TYPES[int(detail_type)])
+                'X': critial_point[0],
+                'Y': critial_point[1],
+                'Z': critial_point[2],
+                'Gradient': np.array(gradient),
+                'Type': cp_type,
+                'Type_text': str(constants.TYPES[int(cp_type)]),
+                'Detailed_type': detail_type,
+                'Detailed_type_text': str(constants.DETAILED_TYPES[int(detail_type)])
             })
 
             # Fill critical points list
@@ -204,15 +204,15 @@ class VectorFieldTopology():
         keys = self.critical_points_info[0].keys()
 
         try:
-            with open(f'{dirName}/critical_point_info.csv', mode='w',encoding='utf8', newline='') as output_to_csv:
+            with open(f'{dirName}/critical_points_info.csv', mode='w',encoding='utf8', newline='') as output_to_csv:
                 dict_csv_writer = csv.DictWriter(output_to_csv, fieldnames=keys, dialect='excel')
                 dict_csv_writer.writeheader()
                 dict_csv_writer.writerows(self.critical_points_info)
 
             # TODO: Remove this, is for debugging in paraview.
-            df = pd.read_csv(f'{dirName}/critical_point_info.csv')
-            df.drop('gradient', inplace=True, axis=1)
-            df.to_csv(f'{dirName}/critical_point_info_no_gradient.csv', index=False)
+            df = pd.read_csv(f'{dirName}/critical_points_info.csv')
+            df.drop('Gradient', inplace=True, axis=1)
+            df.to_csv(f'{dirName}/critical_points_info_no_gradient.csv', index=False)
             # ===========================================================
             
             np.savetxt(f"{dirName}/critical_points.txt", self.critical_points, fmt='%1.5f')
