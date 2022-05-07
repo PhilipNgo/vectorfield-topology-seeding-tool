@@ -102,8 +102,15 @@ class VectorFieldTopology():
         #bx_string = f"({scalar_name_x}+{noise_string}/{scalar_name_x})*iHat"
         #by_string = f"({scalar_name_y}+{noise_string}/{scalar_name_y})*jHat"
         #bz_string = f"({scalar_name_z}+{noise_string}/{scalar_name_z})*kHat"
+
+        if((' ' in scalar_name_x) == True):
+            scalar_name_x = f'"{scalar_name_x}"'
+        if((' ' in scalar_name_y) == True):
+            scalar_name_y = f'"{scalar_name_y}"'
+        if((' ' in scalar_name_z) == True):
+            scalar_name_z = f'"{scalar_name_z}"'
         
-        vecFieldCalc.SetFunction(f'"{scalar_name_x}"*iHat+"{scalar_name_y}"*jHat+"{scalar_name_z}"*kHat')
+        vecFieldCalc.SetFunction(f'{scalar_name_x}*iHat+{scalar_name_y}*jHat+{scalar_name_z}*kHat')
         vecFieldCalc.SetResultArrayName("Vectorfield")
         vecFieldCalc.Update()
 
