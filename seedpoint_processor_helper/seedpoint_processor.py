@@ -153,7 +153,7 @@ class SeedpointProcessor():
                 streamline_points = vtk_to_numpy(streamline.GetOutput().GetPoints().GetData())
 
                 if(len(streamline_points) > 0):
-                    side, status = self.__get_status_seedpoint(streamline_points)
+                    side, status = self.__get_status_seedpoint(streamline_points, critical_point)
                     seed_side.append(side)
                     seed_status.append(status)
                     critical_point_location.append(critical_point)
@@ -172,7 +172,7 @@ class SeedpointProcessor():
 
        
 
-    def __get_status_seedpoint(self, streamline_points: Tuple[float,float,float]) -> Tuple[EarthSide, FieldlineStatus]:
+    def __get_status_seedpoint(self, streamline_points: Tuple[float,float,float], critical_point: Tuple[float,float,float]) -> Tuple[EarthSide, FieldlineStatus]:
         """ Gets the status of a certain streamline """
     
         ux, uy, uz = constants.UPPERBOUND
@@ -190,20 +190,19 @@ class SeedpointProcessor():
                 hit_earth_bottom = True
 
         # If the x value is less than certain threshhold. Then we regard it as nightside.
-        streamline_points_x = [d[0] for d in streamline_points]
-        if(min(streamline_points_x) < constants.DAYSIDE_NIGHTSIDE_THRESHOLD):
-            result_side = EarthSide.NIGHTSIDE
+        if(critical_point[0] < constants.DAYSIDE_NIGHTSIDE_THRESHOLD):
+            result_side = EarthSide.NIGHTSIDE.value
         else:
-            result_side = EarthSide.DAYSIDE
+            result_side = EarthSide.DAYSIDE.value
 
         if(not hit_earth_top and not hit_earth_bottom):
-            result_status = FieldlineStatus.IMF
+            result_status = FieldlineStatus.IMF.value
         elif(hit_earth_top and hit_earth_bottom):
-            result_status = FieldlineStatus.CLOSED
+            result_status = FieldlineStatus.CLOSED.value
         elif(hit_earth_top and not hit_earth_bottom):
-            result_status = FieldlineStatus.OPEN_NORTH
+            result_status = FieldlineStatus.OPEN_NORTH.value
         elif(not hit_earth_top and hit_earth_bottom):
-            result_status = FieldlineStatus.OPEN_SOUTH
+            result_status = FieldlineStatus.OPEN_SOUTH.value
         else:
             logging.info('SOMETHING WRONG HAPPENED')
             raise ValueError()
@@ -254,3 +253,5 @@ class SeedpointProcessor():
         list_of_actors = [earth, streamline_actor, upperbound, lowerbound]
 
         start_window(list_of_actors)
+
+    #def openspace_seeding()

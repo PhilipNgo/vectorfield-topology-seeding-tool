@@ -52,7 +52,7 @@ class SeedpointGenerator():
     def load_critical_point_info(self, critical_point_info_filename:str) -> None:
         """Loads a csv file containing the critical_point_info"""
         if(os.path.exists(critical_point_info_filename)):
-            df = pd.read_csv('critical_points/critical_point_info.csv')
+            df = pd.read_csv(critical_point_info_filename)
             critical_point_info = df.to_dict('records')
 
             self.critical_points = [[x['X'], x['Y'], x['Z']] for x in critical_point_info]
@@ -67,7 +67,24 @@ class SeedpointGenerator():
         self.critical_points = [[x['X'], x['Y'], x['Z']] for x in critical_point_info]
         self.gradient = [x['Gradient'] for x in critical_point_info]
 
-    def update_seed_points(self) -> None:
+    def set_custom_points(self, custom_points: List[Tuple[float,float,float]]) -> None:
+        """Uses to our own custom points we want to seed around. Works for custom template and spherical template
+        :custom_points: A list of points with x,y,z coordinates.
+        """
+        self.critical_points = custom_points
+
+    def load_custom_points(self, custom_point_filename:str):
+        """Loads a csv file containing the custom points with 'X','Y','Z' columns."""
+        if(os.path.exists(custom_point_filename)):
+            df = pd.read_csv(custom_point_filename)
+            custom_points_dict = df.to_dict('records')
+
+            self.critical_points = [[x['X'], x['Y'], x['Z']] for x in custom_points_dict]
+        else:
+            raise FileNotFoundError("File not found..")
+
+
+    def update_seed_points(self, is_custom_points = False) -> None:
         """ Generates seedpoints based on critical points"""
 
         if(self.template == Template.SPHERICAL):
@@ -126,8 +143,6 @@ class SeedpointGenerator():
                 self.list_of_actors.append(nightside_actor)
         else:
             raise ValueError("No template has been selected. To update template, use set_template() function")
-            warnings.warn("No template has been selected..")
-            
 
 
     def visualize(self) -> None:
