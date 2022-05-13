@@ -211,17 +211,47 @@ class SeedpointProcessor():
 
     def visualize(self, side:Optional[EarthSide] = None, status:Optional[FieldlineStatus] = None) -> None:
         """Visualize the streamlines and starts the rendering"""
+        self.list_of_actors.clear()
+
         df = self.seedpoint_info
         
         # If we want a specific side or status
         if(side and status):
-            df = df.loc[(df['EarthSide'] == side) & (df['FieldlineStatus'] == status)]
-        
+            df_side_status = df.loc[(df['EarthSide'] == side) & (df['FieldlineStatus'] == status)]
+            actor = self.__get_streamline_actor_from_dataframe(df_side_status)
+            self.list_of_actors.append(actor)
+            
         elif(side and not status):
-            df = df.loc[(df['EarthSide'] == side)]
+            df_side = df.loc[(df['EarthSide'] == side)]
+            actor = self.__get_streamline_actor_from_dataframe(df_side)
+            self.list_of_actors.append(actor)
         
         elif(not side and status):
-            df = df.loc[(df['FieldlineStatus'] == status)]
+            df_status = df.loc[(df['FieldlineStatus'] == status)]
+            actor = self.__get_streamline_actor_from_dataframe(df_status)
+            self.list_of_actors.append(actor)
+        else:
+            all_status = [FieldlineStatus.IMF.value,FieldlineStatus.CLOSED.value, FieldlineStatus.OPEN_NORTH.value, FieldlineStatus.OPEN_SOUTH.value]
+            colors = [(0,0,0),(0,0,1),(1,1,1),(1,1,1)]
+
+            for color, status in zip(colors, all_status):
+                df_status = df.loc[(df['FieldlineStatus'] == status)]
+                actor = self.__get_streamline_actor_from_dataframe(df_status, color)
+                self.list_of_actors.append(actor)       
+
+        earth = get_sphere_actor(radius=3, center=(0,0,0), opacity=0.4)
+        upperbound = get_sphere_actor(radius=0.5, center=(0,0,1), color=(1,1,1))
+        lowerbound = get_sphere_actor(radius=0.5, center=(0,0,-1), color=(1,1,1))
+
+        self.list_of_actors.append(earth) 
+        self.list_of_actors.append(upperbound)
+        self.list_of_actors.append(lowerbound)
+
+
+        start_window(self.list_of_actors)
+
+
+    def __get_streamline_actor_from_dataframe(self, df:pd.DataFrame, color: Tuple[float,float,float]):
 
         seedpos = list(zip(df['X'],df['Y'],df['Z']))
 
@@ -245,13 +275,8 @@ class SeedpointProcessor():
         streamline_actor = vtkActor()
         streamline_actor.SetMapper(streamline_mapper)
         streamline_actor.VisibilityOn()
+        streamline_actor.GetProperty().SetColor(color)
+        return streamline_actor
 
-        earth = get_sphere_actor(radius=3, center=(0,0,0), opacity=0.4)
-        upperbound = get_sphere_actor(radius=0.5, center=(0,0,1), color=(1,1,1))
-        lowerbound = get_sphere_actor(radius=0.5, center=(0,0,-1), color=(1,1,1))
-
-        self.list_of_actors = [earth, streamline_actor, upperbound, lowerbound]
-
-        start_window(self.list_of_actors)
 
     #def openspace_seeding()

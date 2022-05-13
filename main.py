@@ -14,10 +14,10 @@ import pandas as pd
 def main():
     # # ###################### PART 1: Find critical points #############################
 
-    filename = 'data/3d__var_2_e20000101-020000-000.dat'
+    #filename = 'data/3d__var_2_e20000101-020000-000.dat'
     # filename = 'data/3d__var_2_e20000101-020000-000_high.dat'
     #filename = 'data/cut_mhd_3_e20000101-020000-000.dat'
-    #filename = 'data/cut_mhd_2_e20000101-020000-000.dat'
+    filename = 'data/cut_mhd_2_e20000101-020000-000.dat'
     #filename = 'data/experiment/med_res_negbz_and_noise.vtu'
     #filename = 'data/experiment/med_res_flipped_coordsx_bx_inv.vtu'
     #filename = 'data/3d__var_2_e20000101-020000-000_nonsym.dat'
@@ -39,14 +39,14 @@ def main():
     # #print(f"\nPart 1 executed in {t1_stop-t1_start} seconds")
 
     # # ########################## PART 2: PROCESS CRITICAL POINTS ##########################
-    cp_processor = CriticalPointProcessor()
-    cp_processor.set_critical_points_info(vft.critical_points_info)
+    #cp_processor = CriticalPointProcessor()
+    #cp_processor.set_critical_points_info(vft.critical_points_info)
     # cp_processor.load_critical_points_info('critical_points/critical_points_info.csv')
-    cp_processor.filter_critical_points_by_types(['SADDLE_2_3D','SADDLE_1_3D'])
+    #cp_processor.filter_critical_points_by_types(['SADDLE_2_3D','SADDLE_1_3D'])
     #cp_processor.filter_critical_points_by_detailed_types(['NODE_SADDLE_1_3D'])
     # cp_processor.save_critical_points_to_file()
-    cp_processor.update_list_of_actors()
-    cp_processor.visualize()
+    #cp_processor.update_list_of_actors()
+    #cp_processor.visualize()
     # cp_processor.visualize_detailed_types(['NODE_SADDLE_1_3D'])
     # # cp_processor.visualize_detailed_types(['FOCUS_SADDLE_1_3D'])
     # # cp_processor.visualize_detailed_types(['NODE_SADDLE_2_3D'])
@@ -63,7 +63,7 @@ def main():
     # #sp_generator.set_custom_template('template.txt')
     sp_generator.update_seed_points()
     # sp_generator.save_seed_points_to_file()
-    sp_generator.visualize()
+    #sp_generator.visualize()
     # # t2_stop = perf_counter()
 
     # # print(f"\nPart 2 executed in {t2_stop-t2_start} seconds")
@@ -75,8 +75,8 @@ def main():
     sp_processor.set_seed_critical_pair(sp_generator.seed_critical_pair)
     sp_processor.set_vector_field_domain(vft.vectorfield)
     sp_processor.update_seed_point_info()
-    sp_processor.remove_useless_seed_points(level=1)
-    sp_processor.filter_seeds(side=EarthSide.DAYSIDE.value, status=FieldlineStatus.CLOSED.value)
+    #sp_processor.remove_useless_seed_points(level=1)
+    #sp_processor.filter_seeds(side=EarthSide.DAYSIDE.value, status=FieldlineStatus.CLOSED.value)
     # sp_processor.save_seed_point_info_to_file()
     # sp_processor.save_seed_points_to_file() 
     sp_processor.visualize()
