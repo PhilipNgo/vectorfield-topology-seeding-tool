@@ -6,11 +6,11 @@ import warnings
 import numpy as np
 import pandas as pd
 from vtk import vtkPoints, vtkPolyData, vtkSphereSource, vtkGlyph3D
-from seedpoint_generator_helper import constants, helpers
+from seedpoint_generator import constants, helpers
 from vtkmodules.util.numpy_support import vtk_to_numpy
-from vectorfieldtopology_helper.vectorfieldtopology import CriticalPointInfo
-from vtk_visualization_helper import helpers as vtk_helper
-from seedpoint_processor_helper import constants as p_constant
+from vectorfieldtopology.vectorfieldtopology import CriticalPointInfo
+from vtk_visualization import helpers as vtk_helper
+from seedpoint_processor import constants as p_constant
 
 class Template(Enum):
     SPHERICAL = 1

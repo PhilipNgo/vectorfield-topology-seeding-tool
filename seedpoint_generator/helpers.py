@@ -9,7 +9,7 @@ from vtkmodules.vtkRenderingCore import (
 
 from vtk import vtkSimplePointsWriter, vtkPoints, vtkTransform, vtkDiskSource, vtkTransformPolyDataFilter, vtkArrowSource
 import numpy as np
-from seedpoint_generator_helper import constants
+from seedpoint_generator import constants
 from vtkmodules.util.numpy_support import numpy_to_vtk, vtk_to_numpy
 
 def write_seed_points_to_file(outfile, glyph):

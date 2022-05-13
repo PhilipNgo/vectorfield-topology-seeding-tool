@@ -4,12 +4,12 @@ from typing import Dict, List, Tuple
 from enum import Enum, auto
 
 import pandas as pd
-from vectorfieldtopology_helper import constants, helpers
+from vectorfieldtopology import constants, helpers
 from vtk import vtkUnstructuredGrid, vtkTecplotReader, vtkVectorFieldTopology, vtkImageData, vtkArrayCalculator, vtkActor, vtkXMLUnstructuredGridReader
 from vtkmodules.util.numpy_support import vtk_to_numpy
 import os
 import numpy as np
-from vtk_visualization_helper import helpers as vtk_helper
+from vtk_visualization import helpers as vtk_helper
 import warnings
 
 logging.basicConfig(level=logging.INFO)

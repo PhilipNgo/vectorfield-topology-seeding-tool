@@ -24,7 +24,7 @@ class CriticalPointProcessor:
         """Loads critical point info from csv file"""
 
         if(os.path.exists(critical_points_info_filename)):
-            df = pd.read_csv('critical_points/critical_points_info.csv')
+            df = pd.read_csv(critical_points_info_filename)
             self.critical_points_info = df.to_dict('records')
             self.critical_points = [[x['X'], x['Y'], x['Z']] for x in self.critical_points_info]
         else:

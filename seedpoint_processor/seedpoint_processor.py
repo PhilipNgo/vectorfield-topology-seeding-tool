@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 from vtk import vtkStreamTracer, vtkPoints, vtkPolyDataMapper, vtkActor, vtkPolyData, vtkImageData
 from vtkmodules.util.numpy_support import vtk_to_numpy
-from seedpoint_processor_helper import constants
-from vectorfieldtopology_helper.helpers import get_sphere_actor
-from vtk_visualization_helper.helpers import start_window
+from seedpoint_processor import constants
+from vectorfieldtopology.helpers import get_sphere_actor
+from vtk_visualization.helpers import start_window
 
 class FieldlineStatus(Enum): 
     IMF = 'IMF'
@@ -28,7 +28,7 @@ class SeedpointProcessor():
         #self.seedpoints = seedpoints
         self.seed_critical_pair = None
         self.seedpoints = []
-        
+        self.list_of_actors = []
         self.seedpoint_info = pd.DataFrame()
 
     def set_seed_critical_pair(self, seed_critical_pair: List[Tuple[List[Tuple[float,float,float]], List[Tuple[float,float,float]]]]) -> None:
@@ -250,8 +250,8 @@ class SeedpointProcessor():
         upperbound = get_sphere_actor(radius=0.5, center=(0,0,1), color=(1,1,1))
         lowerbound = get_sphere_actor(radius=0.5, center=(0,0,-1), color=(1,1,1))
 
-        list_of_actors = [earth, streamline_actor, upperbound, lowerbound]
+        self.list_of_actors = [earth, streamline_actor, upperbound, lowerbound]
 
-        start_window(list_of_actors)
+        start_window(self.list_of_actors)
 
     #def openspace_seeding()
