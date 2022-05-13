@@ -47,24 +47,28 @@ pip install -r requirements.txt
 ```
 
 # About
-This is a python based tool built on top of vtk that simplifies the vtkVectorFieldTopology flow and can be used to generate seedpoints. This tool can also be used to analyze and filter seedpoints based on where its fieldline hits Earth (IMF, CLOSED, OPEN-NORTH, OPEN-SOUTH). This tool is built mainly to analyze the Earths magnetosphere but can be extended to other applications. However, some of the functions are written primarily to study Earths magnetic field such as the "filter"-functions.
+This is a python based tool built on top of vtk that simplifies the vtkVectorFieldTopology flow and can be used to generate seedpoints. This tool can also be used to analyze and filter seedpoints based on where its fieldline hits Earth (IMF, CLOSED, OPEN_NORTH, OPEN_SOUTH). This tool is built mainly to analyze the Earths magnetosphere but can be extended to other applications. However, some of the functions are written primarily to study Earths magnetic field such as the "filter"-functions.
 
-This project is in collabortaion with the Community Coordinated Modeling Center(CCMC) and is used in the OpenSpace application.
+This project is in collabortaion with the Community Coordinated Modeling Center(CCMC) at NASA Goddard Space Flight Center and is used in the OpenSpace application.
 
 
 # Quick Start: End to end pipeline
 
 ```python
-from seedpoint_generator_helper.seedpoint_generator import SeedpointGenerator, Template
-from seedpoint_processor_helper.seedpoint_processor import EarthSide, SeedpointProcessor, FieldlineStatus
-from vectorfieldtopology_helper.helpers import get_sphere_actor
-from vectorfieldtopology_helper.vectorfieldtopology import VectorFieldTopology
-from vtk_visualization_helper.helpers import start_window
+
+import numpy as np
+import pandas as pd
+from criticalpoint_processor.criticalpoint_processor import CriticalPointProcessor
+from seedpoint_generator.seedpoint_generator import SeedpointGenerator, Template
+from seedpoint_processor.seedpoint_processor import EarthSide, SeedpointProcessor, FieldlineStatus
+from vectorfieldtopology.vectorfieldtopology import VectorFieldTopology
+from vtk_visualization.helpers import start_window
+
 
 def main():
-    # # ###################### PART 1: Find critical points #############################
+    ####################### PART 1: Find critical points #############################
 
-    filename = 'data/cut_mhd_2_e20000101-020000-000.dat'
+    filename = 'data/3d__var_2_e20000101-020000-000.dat'
     
     vft = VectorFieldTopology()
     vft.read_file(filename, rename_xyz=True)
@@ -75,31 +79,42 @@ def main():
     vft.save_critical_points_to_file()
     vft.update_list_of_actors(show_critical_points=True, show_separator=False, show_vectorfield=False)
     vft.visualize()
+    
 
+    ########################### PART 2: PROCESS CRITICAL POINTS ##########################
+    cp_processor = CriticalPointProcessor()
+    cp_processor.set_critical_points_info(vft.critical_points_info)
+    cp_processor.filter_critical_points_by_types(['SADDLE_2_3D','SADDLE_1_3D'])
+    cp_processor.update_list_of_actors()
+    cp_processor.visualize()
 
-    # ########################## PART 2: GENERATE SEEDPOINTS ################################
+    ########################## PART 3: GENERATE SEEDPOINTS ################################
 
     sp_generator = SeedpointGenerator()
-    sp_generator.set_critical_point_info(vft.critical_points_info)
+    sp_generator.set_critical_point_info(cp_processor.critical_points_info)
     sp_generator.set_template(Template.SPHERICAL)
     sp_generator.update_seed_points()
     sp_generator.save_seed_points_to_file()
     sp_generator.visualize()
-
-    ######################### PART 3: PROCESS SEEDPOINTS ################################
+    
+    # ######################### PART 4: PROCESS SEEDPOINTS ################################
+    # t3_start = perf_counter()
 
     sp_processor = SeedpointProcessor()
     sp_processor.set_seed_critical_pair(sp_generator.seed_critical_pair)
     sp_processor.set_vector_field_domain(vft.vectorfield)
     sp_processor.update_seed_point_info()
-    sp_processor.remove_useless_seed_points(level=0)
-    sp_processor.filter_seeds(side=EarthSide.DAYSIDE, status=FieldlineStatus.IMF)
     sp_processor.save_seed_point_info_to_file()
     sp_processor.save_seed_points_to_file() 
     sp_processor.visualize()
-   
+    sp_processor.visualize(side=EarthSide.DAYSIDE.value, status=FieldlineStatus.CLOSED.value)
+    sp_processor.visualize(side=EarthSide.DAYSIDE.value, status=FieldlineStatus.CLOSED.value)
+    sp_processor.visualize(side=EarthSide.NIGHTSIDE.value, status=FieldlineStatus.CLOSED.value)
+
 if __name__ == '__main__':
     main()
+   
+    
    
     
 ```
@@ -109,7 +124,7 @@ if __name__ == '__main__':
 | Class variables | Description |
 | :--------- | :----------- |
 | `critical_points` | List of critical point (x,y,z) coordinates|
-| `critical_points_info` | List of critical point info objects containing: x,y,z,gradient,type,type_text, detailed_type, detailed_type_text. Types and text are based on vtkVectorfielTopology types. Possible types and text combination: <table>  <thead>  <tr>  <th></th>  <th>Type</th>  <th>Text</th> <th></th> <th>Detailed Type</th> <th>Text</th>  </tr>  </thead>  <tbody>  <tr>  <td></td>  <td>-1</td> <td>DEGENERATE_3D</td> <td></td> <td>-1</td>  <td>DEGENERATE_3D</td>  </tr> <tr>  <td></td>  <td>0</td> <td>SINK_3D</td> <td></td> <td>0</td>  <td>ATTRACTING_NODE_3D</td>  </tr> <tr>  <td></td>  <td>1</td> <td>SADDLE_1_3D</td> <td></td> <td>1</td>  <td>ATTRACTING_FOCUS_3D</td>  </tr> <tr>  <td></td>  <td>2</td> <td>SADDLE_2_3D</td> <td></td> <td>2</td>  <td>NODE_SADDLE_1_3D</td>  </tr> <tr>  <td></td>  <td>3</td> <td>SOURCE_3D</td> <td></td> <td>3</td>  <td>FOCUS_SADDLE_1_3D</td>  </tr> <tr>  <td></td>  <td>4</td> <td>CENTER_3D</td> <td></td> <td>4</td>  <td>NODE_SADDLE_2_3D</td>  </tr> <tr>  <td></td>  <td></td> <td></td> <td></td> <td>5</td>  <td>FOCUS_SADDLE_2_3D</td>  </tr> <tr>  <td></td>  <td></td> <td></td> <td></td> <td>6</td>  <td>REPELLING_NODE_3D</td>  </tr> <tr>  <td></td>  <td></td> <td></td> <td></td> <td>7</td>  <td>REPELLING_FOCUS_3D</td>  </tr><tr>  <td></td>  <td></td> <td></td> <td></td> <td>8</td>  <td>CENTER_DETAILED_3D</td>  </tr> </tbody>  </table>  |
+| `critical_points_info` | List of critical point info dictionaries containing following keys: <br/> [`X`,`Y`,`Z`,`Gradient`,`Type`,`Type_text`, `Detailed_type`, `Detailed_type_text`]. <br/> Types and text are based on vtkVectorfielTopology types. Possible types and text combination: <table>  <thead>  <tr>  <th></th>  <th>Type</th>  <th>Text</th> <th></th> <th>Detailed Type</th> <th>Text</th>  </tr>  </thead>  <tbody>  <tr>  <td></td>  <td>-1</td> <td>DEGENERATE_3D</td> <td></td> <td>-1</td>  <td>DEGENERATE_3D</td>  </tr> <tr>  <td></td>  <td>0</td> <td>SINK_3D</td> <td></td> <td>0</td>  <td>ATTRACTING_NODE_3D</td>  </tr> <tr>  <td></td>  <td>1</td> <td>SADDLE_1_3D</td> <td></td> <td>1</td>  <td>ATTRACTING_FOCUS_3D</td>  </tr> <tr>  <td></td>  <td>2</td> <td>SADDLE_2_3D</td> <td></td> <td>2</td>  <td>NODE_SADDLE_1_3D</td>  </tr> <tr>  <td></td>  <td>3</td> <td>SOURCE_3D</td> <td></td> <td>3</td>  <td>FOCUS_SADDLE_1_3D</td>  </tr> <tr>  <td></td>  <td>4</td> <td>CENTER_3D</td> <td></td> <td>4</td>  <td>NODE_SADDLE_2_3D</td>  </tr> <tr>  <td></td>  <td></td> <td></td> <td></td> <td>5</td>  <td>FOCUS_SADDLE_2_3D</td>  </tr> <tr>  <td></td>  <td></td> <td></td> <td></td> <td>6</td>  <td>REPELLING_NODE_3D</td>  </tr> <tr>  <td></td>  <td></td> <td></td> <td></td> <td>7</td>  <td>REPELLING_FOCUS_3D</td>  </tr><tr>  <td></td>  <td></td> <td></td> <td></td> <td>8</td>  <td>CENTER_DETAILED_3D</td>  </tr> </tbody>  </table>  |
 | `list_of_actors` | List of vtkActors that is used to render things to the screen.|
 | `data_object` | A vtkUnstructuredGrid that is stored and loaded with read_file() function.  |
 | `vectorfield` | A vtkImageData containing vector data.  |
@@ -198,7 +213,7 @@ Updates list_of_actors class variable
 
 <br/>
 
-### _visualize(self)_
+### _visualize()_
 Starts the visualization
 | Description |
 | :--------- | 
@@ -206,80 +221,233 @@ Starts the visualization
 
 <br/>
 
-## Part 2: class SeedpointGenerator
-
-## Part 3: class SeedpointProcessor
-
-
-
-
-The Optimized Route service provides a quick computation of time and distance between a set of location sources and location targets and returns them in an optimized route order, along with the shape.
-
-[View an interactive demo](http://valhalla.github.io/demos/optimized_route)
-
-## Part 1: class VectorfieldTopology 
-
-You can request the following action from the Optimized Route service: `/optimized_route?`. Since an optimized route is really an extension of the *many_to_many* matrix (where the source locations are the same as the target locations), the first step is to compute a cost matrix by sending a matrix request.  Then, we send our resulting cost matrix (resulting time or distance) to the optimizer which will return our optimized path.
-
-| Optimized type | Description |
+## Part 2: class CriticalPointProcessor
+| Class variables | Description |
 | :--------- | :----------- |
-| `optimized_route` | Returns an optimized route stopping at each destination location exactly one time, always starting at the first location in the list and ending at the last location. This will result in a route with multiple legs.  |
+| `critical_points` | List of critical point (x,y,z) coordinates|
+| `critical_points_info` | List of critical point info dictionaries containing following keys: <br/> [`X`,`Y`,`Z`,`Gradient`,`Type`,`Type_text`, `Detailed_type`, `Detailed_type_text`]. <br/> Types and text are based on vtkVectorfielTopology types. Possible types and text combination: <table>  <thead>  <tr>  <th></th>  <th>Type</th>  <th>Text</th> <th></th> <th>Detailed Type</th> <th>Text</th>  </tr>  </thead>  <tbody>  <tr>  <td></td>  <td>-1</td> <td>DEGENERATE_3D</td> <td></td> <td>-1</td>  <td>DEGENERATE_3D</td>  </tr> <tr>  <td></td>  <td>0</td> <td>SINK_3D</td> <td></td> <td>0</td>  <td>ATTRACTING_NODE_3D</td>  </tr> <tr>  <td></td>  <td>1</td> <td>SADDLE_1_3D</td> <td></td> <td>1</td>  <td>ATTRACTING_FOCUS_3D</td>  </tr> <tr>  <td></td>  <td>2</td> <td>SADDLE_2_3D</td> <td></td> <td>2</td>  <td>NODE_SADDLE_1_3D</td>  </tr> <tr>  <td></td>  <td>3</td> <td>SOURCE_3D</td> <td></td> <td>3</td>  <td>FOCUS_SADDLE_1_3D</td>  </tr> <tr>  <td></td>  <td>4</td> <td>CENTER_3D</td> <td></td> <td>4</td>  <td>NODE_SADDLE_2_3D</td>  </tr> <tr>  <td></td>  <td></td> <td></td> <td></td> <td>5</td>  <td>FOCUS_SADDLE_2_3D</td>  </tr> <tr>  <td></td>  <td></td> <td></td> <td></td> <td>6</td>  <td>REPELLING_NODE_3D</td>  </tr> <tr>  <td></td>  <td></td> <td></td> <td></td> <td>7</td>  <td>REPELLING_FOCUS_3D</td>  </tr><tr>  <td></td>  <td></td> <td></td> <td></td> <td>8</td>  <td>CENTER_DETAILED_3D</td>  </tr> </tbody>  </table>  |
+| `list_of_actors` | List of vtkActors that is used to render things to the screen.|
 
-## Part 2: class SeedpointGenerator
+---
+<br/><br/>
 
-The optimized route request run locally takes the form of `localhost:8002/optimized_route?json={}`, where the JSON inputs inside the `{}` includes location information (at least four locations), as well as the name and options for the costing model
+## **Functions**:
 
-Here is an example of an Optimized Route scenario:
+---
+<br/>
 
-Given a list of cities and the distances and times between each pair, a salesperson wants to visit each city one time by taking the most optimized route and end at a destination (either return to origin or a different destination).
+### _load_critical_points_info(critical_points_info_filename)_ 
+Loads a .csv data containing critical point info and updates `critical_point_info`.
 
-```
-{"locations":[{"lat":40.042072,"lon":-76.306572},{"lat":39.992115,"lon":-76.781559},{"lat":39.984519,"lon":-76.6956},{"lat":39.996586,"lon":-76.769028},{"lat":39.984322,"lon":-76.706672}],"costing":"auto","directions_options":{"units":"miles"}}
-```
-
-There is an option to name your optimized route request. You can do this by appending the following to your request `&id=`.  The `id` is returned with the response so a user could match to the corresponding request.
-
-### Location parameters
-
-A location must include a latitude and longitude in decimal degrees. The coordinates can come from many input sources, such as a GPS location, a point or a click on a map, a geocoding service, and so on. External search/geocoding services can be used to find places and geocode addresses, whose coordinates can be used as input to the service.
-
-| Location parameters | Description |
+| Parameters | Description |
 | :--------- | :----------- |
-| `lat` | Latitude of the location in degrees. |
-| `lon` | Longitude of the location in degrees. |
+| `critical_points_info_filename` | Path to the .csv file containing  the critical pointss info |
 
-Refer to the [route location documentation](/turn-by-turn/api-reference.md#locations) for more information on specifying locations.
+<br/>
 
-### Costing parameters
+### _set_critical_points_info(critical_points_info)_
+Sets the critical_point_info class variable
+| Parameters | Description |
+| :--------- | :----------- |
+| `critical_points_info` | List of critical point info dictionaries containing following keys: <br/> [`X`,`Y`,`Z`,`Gradient`,`Type`,`Type_text`, `Detailed_type`, `Detailed_type_text`]. |
+<br/>
 
-The Optimized Route service uses the `auto`, `bicycle` and `pedestrian` costing models available in the Valhalla route service. The **multimodal costing is not supported** for the Optimized Route service at this time.  Refer to the [route costing models](/turn-by-turn/api-reference.md#costing-models) and [costing options](/turn-by-turn/api-reference.md#costing-options) documentation for more on how to specify this input.
+### _filter_critical_points_by_types(list_of_types)_
+Filter critical points by types
+| Description |
+| :--------- | 
+| Filter critical based on critical_point_info['Type_text']|
+<br/>
 
-### Other request options
+### _filter_critical_points_by_detailed_types(list_of_detailed_types)_ 
+Filter critical points by detailed types
+| Description |
+| :--------- | 
+| Filter critical based on critical_point_info['Detailed_type_text']|
+<br/>
 
-| Options | Description |
-| :------------------ | :----------- |
-| `id` | Name your optimized request. If `id` is specified, the naming will be sent thru to the response. |
+### _update_list_of_actors()_
+Updates list_of_actors class variable
+| Description |
+| :--------- | 
+| Updates class variable `list_of_actors` based on information in the class|
+<br/>
 
-## Outputs of the optimized route service
+### _visualize()_
+Starts the visualization
+| Description |
+| :--------- | 
+| Starts the rendering window and renders everything in the `list_of_actors` class variable. |
+<br/>
 
-If an optimized request has been named using the optional `&id=` input, then the name will be returned as a string `id`.
+### _visualize_types(list_of_types)_
+Starts the visualization with only certain type
+| Parameters | Description |
+| :--------- | :----------- |
+| `list_of_types` | List of critical_point_info['Type_text'], can be any combination|
+<br/>
 
-These are the results of a request to the Optimized Route service.
+### _visualize_detailed_types(list_of_types)_
+Starts the visualization with only certain detailed type
+| Parameters | Description |
+| :--------- | :----------- |
+| `list_of_types` | List of critical_point_info['Detailed_type_text'], can be any combination|
+<br/>
 
-| Item | Description |
-| :---- | :----------- |
-| `optimized_route` | Returns an optimized route path from point 'a' to point 'n'.  Given a list of locations, an optimized route with stops at each intermediate location exactly one time, always starting at the first location in the list and ending at the last location.|
-| `locations` | The specified array of lat/lngs from the input request.  The first and last locations in the array will remain the same as the input request.  The intermediate locations may be returned reordered in the response.  Due to the reordering of the intermediate locations, an `original_index` is also part of the `locations` object within the response.  This is an identifier of the location index that will allow a user to easily correlate input locations with output locations. |
-| `units` | Distance units for output. Allowable unit types are mi (miles) and km (kilometers). If no unit type is specified, the units default to kilometers. |
+### _save_critical_points_to_file()_
+Saves critical points to file
+| Description |
+| :--------- | 
+| Saves the `critical_points` as .txt and `critical_point_info` as .csv to directory "critical_points"|
+<br/>
 
-## Error checking
 
-The service checks the return to see that all locations can be reached. If one or more cannot be reached, it returns an error and lists the location number that cannot be reached.  Currently, one location is listed at this time, even if more than one have an issue.
+## Part 3: class SeedpointGenerator
+| Class variables | Description |
+| :--------- | :----------- |
+| `critical_points` | List of critical point (x,y,z) coordinates|
+| `gradient` | List of gradients given from critical points|
+| `seed_points` | List of seed points (x,y,z) coordinates|
+| `template` | Currently 3 working templates. `Template.SPHERICAL`,  `Template.TRIPPLE_EIGEN_PLANE`, `Template.SMART`|
+| `seed_critical_pair` | List of critical point and their corresponding seed points|
+| `list_of_actors` | List of vtkActors that is used to render things to the screen.|
 
-This is an example which should return: `400::Location at index 3 is unreachable`
+---
+<br/><br/>
 
-```
-{"locations":[{"lat":40.306600,"lon":-76.900022},{"lat":40.293246,"lon":-76.936230},{"lat":40.448678,"lon":-76.932885},{"lat":40.419753,"lon":-76.999632},{"lat":40.211050,"lon":-76.777071},{"lat":40.306600,"lon":-76.900022}],"costing":"auto"}
-```
+## **Functions**:
 
-See the [HTTP return codes](/turn-by-turn/api-reference.md#http-status-codes-and-conditions) for more on messages you might receive from the service.
+---
+<br/>
+
+### _load_critical_points_info(critical_points_info_filename)_ 
+Loads a .csv data containing critical point info and updates `critical_point_info`.
+| Parameters | Description |
+| :--------- | :----------- |
+| `critical_points_info_filename` | Path to the .csv file containing  the critical pointss info |
+
+### _set_template(template)_
+Sets the template to seed
+| Parameters | Description |
+| :--------- | :----------- |
+| `template` | Currently 3 working templates. `Template.SPHERICAL`,  `Template.TRIPPLE_EIGEN_PLANE`, `Template.SMART`
+
+
+### _set_custom_template(template_filename)_
+Sets custom template based on user input
+| Parameters | Description |
+| :--------- | :----------- |
+| `template_filename` | Path to the .txt file containing the template structure |
+
+### _load_critical_points_info(critical_points_info_filename)_ 
+Loads a .csv data containing critical point info and updates `critical_point_info`.
+
+| Parameters | Description |
+| :--------- | :----------- |
+| `critical_points_info_filename` | Path to the .csv file containing  the critical pointss info |
+
+<br/>
+
+### _set_critical_points_info(critical_points_info)_
+Sets the critical_point_info class variable
+| Parameters | Description |
+| :--------- | :----------- |
+| `critical_points_info` | List of critical point info dictionaries containing following keys: <br/> [`X`,`Y`,`Z`,`Gradient`,`Type`,`Type_text`, `Detailed_type`, `Detailed_type_text`]. |
+<br/>
+
+### _set_custom_points(custom_points)_
+Sets custom points by user
+| Parameters | Description |
+| :--------- | :----------- |
+| `custom_points` | List of custom points of (x,y,z) data to seed around.|
+<br/>
+
+### _load_custom_points(custom_point_filename)_
+Loads custom points set by user
+| Parameters | Description |
+| :--------- | :----------- |
+| `custom_point_filename` | Path to file containing list of custom points of (x,y,z) data to seed around.|
+<br/>
+
+### _update_seed_points(is_custom_points)_
+Updates the seedpoints
+| Parameters | Description |
+| :--------- | :----------- |
+| `is_custom_points` | Boolean on wether to run a built in template or custom template |
+<br/>
+
+### _save_seed_points_to_file()_
+Save the seed points
+| Description |
+| :--------- | 
+| Saves the `seedpoints` as .txt to directory "./seed_points"|
+<br/>    
+       
+### _visualize()_
+Starts the visualization
+| Description |
+| :--------- | 
+| Starts the rendering window and renders everything in the `list_of_actors` class variable. |
+<br/>    
+
+
+## Part 4: class SeedpointProcessor
+| Class variables | Description |
+| :--------- | :----------- |
+| `seedpoints` | List of seed points (x,y,z) coordinates|
+| `seedpoint_info` | List of seed point info dictionaries containing following keys: <br/> [`X`, `Y`, `Z`, `EarthSide`, `FieldlineStatus`, `CriticalPoint`]. <br/> Where EarthSide and FieldlineStatus are calculated and can be the following: <table>  <thead>  <tr>  <th></th>  <th>EarthSide</th>  <th></th>  <th>FieldlineStatus</th> </tr>  </thead>  <tbody>  <tr> <td></td>  <td>DAYSIDE</td> <td></td> <td>IMF</td>  </tr> <tr> <td></td>  <td>NIGHTSIDE</td> <td></td> <td>CLOSED</td>  </tr> <tr> <td></td>  <td></td> <td></td> <td>OPEN_SOUTH</td>  </tr> <tr> <td></td>  <td></td> <td></td> <td>OPEN_NORTH</td>  </tr> </tbody>  </table>  |
+| `seed_critical_pair` | List of critical point and their corresponding seed points|
+| `list_of_actors` | List of vtkActors that is used to render things to the screen.|
+
+---
+<br/><br/>
+
+## **Functions**:
+
+---
+<br/>
+
+### _set_seed_critical_pair(seed_critical_pair)_
+Sets the seed critical pair
+| Parameters | Description |
+| :--------- | :----------- |
+| `seed_critical_pair` | List of seedpoints and their corresponding critical point |
+<br/>
+
+### _save_seed_points_to_file()_
+Save the seed points
+| Description |
+| :--------- | 
+| Saves the `seedpoints` as .txt to directory "./seed_points"|
+<br/>
+
+### _save_seed_point_info_to_file()_
+Save the seed point info
+| Description |
+| :--------- | 
+| Saves the `seedpoints_info` as .csv to directory "./seed_points"|
+<br/>
+
+### _update_seed_point_info()_
+Updates seedpoint info
+| Description |
+| :--------- | 
+| Updates `seedpoints_info` based on where the magnetic fieldline hits. Can be classified as : <table>  <thead>  <tr>  <th></th>  <th>EarthSide</th>  <th></th>  <th>FieldlineStatus</th> </tr>  </thead>  <tbody>  <tr> <td></td>  <td>DAYSIDE</td> <td></td> <td>IMF</td>  </tr> <tr> <td></td>  <td>NIGHTSIDE</td> <td></td> <td>CLOSED</td>  </tr> <tr> <td></td>  <td></td> <td></td> <td>OPEN_SOUTH</td>  </tr> <tr> <td></td>  <td></td> <td></td> <td>OPEN_NORTH</td>  </tr> </tbody>  </table>  |
+<br/>
+
+### _visualize(side, status)_
+Starts the rendering window and renders everything in the `list_of_actors` class variable. 
+| Parameters | Description |
+| :--------- | :----------- |
+| `side` (optional) | Filters based on side. Can be `NIGHTSIDE` or `DAYSIDE`|
+| `status` (optional) | Filters based on status. Can be `IMF`, `CLOSED`, `OPEN_NORTH`, `OPEN_SOUTH`|
+<br/>    
+
+
+### ~~_remove_useless_seed_points()_~~ (not fully functioning)
+
+
+
+
+
+
