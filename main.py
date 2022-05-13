@@ -3,11 +3,11 @@ from time import perf_counter, sleep
 
 import numpy as np
 
-from criticalpoint_processor_helper.criticalpoint_processor import CriticalPointProcessor
-from seedpoint_generator_helper.seedpoint_generator import SeedpointGenerator, Template
-from seedpoint_processor_helper.seedpoint_processor import EarthSide, SeedpointProcessor, FieldlineStatus
-from vectorfieldtopology_helper.vectorfieldtopology import VectorFieldTopology
-from vtk_visualization_helper.helpers import start_window
+from criticalpoint_processor.criticalpoint_processor import CriticalPointProcessor
+from seedpoint_generator.seedpoint_generator import SeedpointGenerator, Template
+from seedpoint_processor.seedpoint_processor import EarthSide, SeedpointProcessor, FieldlineStatus
+from vectorfieldtopology.vectorfieldtopology import VectorFieldTopology
+from vtk_visualization.helpers import start_window
 
 import pandas as pd
 
