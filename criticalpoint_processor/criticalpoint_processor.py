@@ -100,10 +100,11 @@ class CriticalPointProcessor:
        
         vtk_helper.start_window([critical_point_actor])
 
-    def save_critical_points_to_file(self) -> None:
+    def save_critical_points_to_file(self, critical_point_filename='critical_points.txt', critical_point_info_filename='critical_points_info.csv') -> None:
         """
         Creates processed_critical_points directory with critical points as txt file and critical point information as a csv file
-        :filename: Output filename
+        :critical_point_filename: critical point filename
+        :critical_point_info_filename: critical point info filename
         """
         dirName = 'processed_critical_points'
 
@@ -116,7 +117,7 @@ class CriticalPointProcessor:
         keys = self.critical_points_info[0].keys()
 
         try:
-            with open(f'{dirName}/critical_points_info.csv', mode='w',encoding='utf8', newline='') as output_to_csv:
+            with open(f'{dirName}/{critical_point_info_filename}', mode='w',encoding='utf8', newline='') as output_to_csv:
                 dict_csv_writer = csv.DictWriter(output_to_csv, fieldnames=keys, dialect='excel')
                 dict_csv_writer.writeheader()
                 dict_csv_writer.writerows(self.critical_points_info)
@@ -127,7 +128,7 @@ class CriticalPointProcessor:
             # df.to_csv(f'{dirName}/critical_points_info_no_gradient.csv', index=False)
             # # ===========================================================
             
-            np.savetxt(f"{dirName}/critical_points.txt", self.critical_points, fmt='%1.5f')
-            logging.info(f"Saved critical point files.")
+            np.savetxt(f"{dirName}/{critical_point_filename}", self.critical_points, fmt='%1.5f')
+            logging.info(f"Saved critical point files, '{dirName}/{critical_point_filename}', and '{dirName}/{critical_point_info_filename}'")
         except IOError as io:
             print('\n',io)

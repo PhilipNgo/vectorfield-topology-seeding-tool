@@ -152,7 +152,7 @@ class SeedpointGenerator():
 
         vtk_helper.start_window(self.list_of_actors)
 
-    def save_seed_points_to_file(self):
+    def save_seed_points_to_file(self, filename='seed_points.txt'):
         """
         Creates seed_points directory with critical points as txt file and critical point information as a csv file
         """
@@ -164,7 +164,7 @@ class SeedpointGenerator():
         else:    
             logging.info(f"Directory {dirName} already exists.")
 
-        np.savetxt(f"{dirName}/seed_points.txt", self.seed_points, fmt='%1.5f')
+        np.savetxt(f"{dirName}/{filename}", self.seed_points, fmt='%1.5f')
 
     def __get_seed_point_critical_point_pair(self, critical_points:List[Tuple[float, float, float]], seedpoints: List[Tuple[float, float, float]]):
         

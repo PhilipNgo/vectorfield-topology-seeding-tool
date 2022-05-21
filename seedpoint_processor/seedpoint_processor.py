@@ -64,9 +64,6 @@ class SeedpointProcessor():
 
         self.seedpoints = list(zip(self.seedpoint_info['X'].to_list(),self.seedpoint_info['Y'].to_list(),self.seedpoint_info['Z'].to_list()))
 
-
-    
-
     def remove_useless_seed_points(self, level:int):
         """
         Removes seedpoints where the FieldlineStatus doesn't change. 
@@ -91,7 +88,7 @@ class SeedpointProcessor():
 
             logging.info(f"Removed {len(list_of_critical_points_to_remove)} critical points with their corresponding seedpoints")
 
-    def save_seed_points_to_file(self):
+    def save_seed_points_to_file(self, filename='seed_points.txt'):
         """
         Creates seed_points directory with critical points as txt file and critical point information as a csv file
         """
@@ -103,9 +100,10 @@ class SeedpointProcessor():
         else:    
             logging.info(f"Directory {dirName} already exists.")
 
-        np.savetxt(f"{dirName}/seed_points.txt", self.seedpoints, fmt='%1.5f')
+        np.savetxt(f"{dirName}/{filename}", self.seedpoints, fmt='%1.5f')
+        logging.info(f"Saved seedpoints to '{dirName}/{filename}'")
     
-    def save_seed_point_info_to_file(self) -> None:
+    def save_seed_point_info_to_file(self, filename='seedpoint_status.csv') -> None:
         """Save seedpoints information to a csv file"""
 
         dirName = 'seed_points'
@@ -116,8 +114,8 @@ class SeedpointProcessor():
         else:    
             logging.info(f"Directory {dirName} already exists.")
 
-        self.seedpoint_info.to_csv(f'{dirName}/seedpoint_status.csv', index=False)
-        logging.info(f"Saved seedpoint information to '{dirName}/seedpoint_status.csv'")
+        self.seedpoint_info.to_csv(f'{dirName}/{filename}', index=False)
+        logging.info(f"Saved seedpoint information to '{dirName}/{filename}'")
 
 
     def update_seed_point_info(self) -> None:
@@ -251,7 +249,7 @@ class SeedpointProcessor():
         start_window(self.list_of_actors)
 
 
-    def __get_streamline_actor_from_dataframe(self, df:pd.DataFrame, color: Tuple[float,float,float]):
+    def __get_streamline_actor_from_dataframe(self, df:pd.DataFrame, color: Tuple[float,float,float]=(1,1,1)):
 
         seedpos = list(zip(df['X'],df['Y'],df['Z']))
 
