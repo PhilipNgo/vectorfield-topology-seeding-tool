@@ -47,9 +47,7 @@ pip install -r requirements.txt
 ```
 
 # About
-This is a python based tool built on top of vtk that simplifies the vtkVectorFieldTopology flow and can be used to generate seedpoints. This tool can also be used to analyze and filter seedpoints based on where its fieldline hits Earth (IMF, CLOSED, OPEN_NORTH, OPEN_SOUTH). This tool is built mainly to analyze the Earths magnetosphere but can be extended to other applications. However, some of the functions are written primarily to study Earths magnetic field such as the "filter"-functions.
-
-This project is in collabortaion with the Community Coordinated Modeling Center(CCMC) at NASA Goddard Space Flight Center and is used in the OpenSpace application.
+This is a python based tool built on top of vtk that simplifies the vtkVectorFieldTopology flow and can be used to generate seedpoints around the given critical points. This project is in collabortaion with the Community Coordinated Modeling Center(CCMC) at NASA Goddard Space Flight Center and is used in the OpenSpace application. This tool can also be used to analyze and filter seedpoints based on where its fieldline hits Earth ('IMF', 'CLOSED', 'OPEN_NORTH', 'OPEN_SOUTH'). Since this tool is built mainly to analyze the Earths magnetosphere, some of the functions are tailored to that. However, this tool can be extended to other applications such as analyzing magnetic fields of the sun or even other planets. Som of the functionality might not be applicable as of now though. 
 
 
 # Quick Start: End to end pipeline
