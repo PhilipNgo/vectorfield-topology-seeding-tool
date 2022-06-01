@@ -221,7 +221,7 @@ class VectorFieldTopology():
             # TODO: Remove this, is for debugging in paraview.
             df = pd.read_csv(f'{dirName}/{critical_point_info_filename}')
             df.drop('Gradient', inplace=True, axis=1)
-            df.to_csv(f'{dirName}/critical_point_info_no_gradient', index=False)
+            df.to_csv(f'{dirName}/critical_point_info_no_gradient.csv', index=False)
             # ===========================================================
             
             np.savetxt(f"{dirName}/{critical_point_filename}", self.critical_points, fmt='%1.5f')

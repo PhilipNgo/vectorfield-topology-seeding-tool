@@ -74,11 +74,17 @@ class SeedpointGenerator():
         self.critical_points = custom_points
 
     def load_custom_points(self, custom_point_filename:str):
-        """Loads a csv file containing the custom points with 'X','Y','Z' columns."""
+        """Loads a csv file containing the custom points with 'X','Y','Z' columns or Points:0,Points:1,Points:2(ParaView standard)."""
         if(os.path.exists(custom_point_filename)):
             df = pd.read_csv(custom_point_filename)
-            custom_points_dict = df.to_dict('records')
 
+            if('Points:0' and 'Points:1' and 'Points:2' in df.columns):
+                df['X'] = df['Points:0']
+                df['Y'] = df['Points:1']
+                df['Z'] = df['Points:2']
+                logging.info(f"Converted Points:0,Points:1,Points:2 to X,Y,Z")
+
+            custom_points_dict = df.to_dict('records')
             self.critical_points = [[x['X'], x['Y'], x['Z']] for x in custom_points_dict]
         else:
             raise FileNotFoundError("File not found..")

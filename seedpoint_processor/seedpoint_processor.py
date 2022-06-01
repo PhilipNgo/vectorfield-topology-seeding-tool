@@ -78,15 +78,19 @@ class SeedpointProcessor():
 
         else:
 
+            logging.info(f"Dropping nulls..")
             self.seedpoint_info['CriticalPoint'] = self.seedpoint_info['CriticalPoint'].apply(lambda x: str(x))
+            self.seedpoint_info = self.seedpoint_info[self.seedpoint_info["CriticalPoint"].str.contains("null")==False]
+
             unique_seedtypes_df = self.seedpoint_info.drop_duplicates(['CriticalPoint', 'FieldlineStatus'])
+
             counter_df = unique_seedtypes_df.groupby(['CriticalPoint']).size().reset_index(name='counts')
             list_of_critical_points_to_remove = counter_df.loc[counter_df['counts'] < level]['CriticalPoint'].to_list()
 
             self.seedpoint_info = self.seedpoint_info[~self.seedpoint_info['CriticalPoint'].isin(list_of_critical_points_to_remove)] 
             self.seedpoints = list(zip(self.seedpoint_info['X'].to_list(),self.seedpoint_info['Y'].to_list(),self.seedpoint_info['Z'].to_list()))
 
-            logging.info(f"Removed {len(list_of_critical_points_to_remove)} critical points with their corresponding seedpoints")
+            logging.info(f"Removed {len(list_of_critical_points_to_remove)} critical points with their corresponding seedpoints. (Not counting nulls)")
 
     def save_seed_points_to_file(self, filename='seed_points.txt'):
         """
