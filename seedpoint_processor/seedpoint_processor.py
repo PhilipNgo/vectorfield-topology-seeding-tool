@@ -68,10 +68,10 @@ class SeedpointProcessor():
         """
         Removes seedpoints where the FieldlineStatus doesn't change. 
         :level: How strictly it removes is dependent on level (1-4)
-        level = 1: Removes seedpoints if all the status are the same
-        level = 2: Removes seedpoints if it only contains 2 types
-        level = 3: Removes seedpoints if it only contains 3 types
-        level = 4: Removes seedpoints if it doesn't contain all types
+        level = 1: Removes seedpoints if all the status are the same.
+        level = 2: Removes seedpoints if it contains less than 2 different types.
+        level = 3: seedpoints if it contains less than 3 different.
+        level = 4: Removes seedpoints if it doesn't contain all types.
         """
         if(level > 4 or level < 1):
             raise ValueError("Level should be between 1-4")

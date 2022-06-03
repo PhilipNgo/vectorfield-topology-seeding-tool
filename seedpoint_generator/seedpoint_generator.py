@@ -73,10 +73,13 @@ class SeedpointGenerator():
         """
         self.critical_points = custom_points
 
-    def load_custom_points(self, custom_point_filename:str):
+    def load_custom_points(self, custom_point_filename:str, every_nth:int=1):
         """Loads a csv file containing the custom points with 'X','Y','Z' columns or Points:0,Points:1,Points:2(ParaView standard)."""
+        
         if(os.path.exists(custom_point_filename)):
             df = pd.read_csv(custom_point_filename)
+            if(every_nth != 1):
+                df = df.iloc[::every_nth, :]
 
             if('Points:0' and 'Points:1' and 'Points:2' in df.columns):
                 df['X'] = df['Points:0']
