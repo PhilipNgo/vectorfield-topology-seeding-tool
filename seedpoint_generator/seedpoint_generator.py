@@ -228,7 +228,7 @@ class SeedpointGenerator():
             for vec in vecs: 
 
                 planes_to_generate.append({
-                    'point': point.tolist(), 
+                    'point': point, 
                     'normal': vec
                 })
 
