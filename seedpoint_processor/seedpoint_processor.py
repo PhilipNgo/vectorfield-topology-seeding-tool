@@ -259,7 +259,7 @@ class SeedpointProcessor():
         start_window(self.list_of_actors)
 
 
-    def __get_streamline_actor_from_dataframe(self, df:pd.DataFrame, color: Tuple[float,float,float]=(1,1,1)):
+    def __get_streamline_actor_from_dataframe(self, df:pd.DataFrame, color: Tuple[float,float,float]=(1,1,1)) -> vtkActor:
 
         seedpos = list(zip(df['X'],df['Y'],df['Z']))
 
@@ -292,5 +292,63 @@ class SeedpointProcessor():
         streamline_actor.GetProperty().SetColor(color)
         return streamline_actor
 
+    def __split_dataframe(self, chunk_size = 10000): 
 
-    #def openspace_seeding()
+        df = self.seedpoint_info
+        chunks = list()
+        num_chunks = len(df) // chunk_size + 1
+        for i in range(num_chunks):
+            chunks.append(df[i*chunk_size:(i+1)*chunk_size])
+        return chunks
+
+    def openspace_seeding(self, z_spacing=2, p=1/8, filename='seedpoints_openspace.txt') -> None:  
+
+        #Get pairs of 4
+        seedgroups = self.__split_dataframe(5)
+        indices_without_one_of_each = []
+
+        final_seed_groups = []
+        for index, seedgroup in enumerate(seedgroups):
+            seedgroup = seedgroup.drop_duplicates(subset='FieldlineStatus')
+
+            if(len(seedgroup) != 4):
+                indices_without_one_of_each.append(index)
+            else:
+                seedgroup = seedgroup.sort_values("FieldlineStatus")
+                seedgroup = seedgroup.reset_index(drop=True)
+                seedgroup = seedgroup.reindex([1, 0, 2, 3])
+                final_seed_groups.append(seedgroup)
+
+
+        df_final = pd.concat(final_seed_groups)
+        data = list(zip(df_final['X'].tolist(),df_final['Y'].tolist(),df_final['Z'].tolist()))
+
+        # Increase z-axis
+        res = []
+        curr_ind = 0
+
+        for ind, (x,y,z) in enumerate(data):
+            
+            if(curr_ind == 4):
+                curr_ind = 0
+
+            if(ind < len(data)-1):
+
+                if(curr_ind == 2):
+                    if(z < data[ind+1][2]):
+                        z_down = z-z_spacing
+                        z_up = data[ind+1][2]+z_spacing
+                    else:
+                        z_up = z+z_spacing
+                        z_down = data[ind+1][2]-z_spacing
+
+                    res.append([x-(x*p),y-(y*p),z_up])
+                    res.append([x-(x*p),y-(y*p),z_down])
+
+                elif(curr_ind == 0 or curr_ind == 1):
+                    res.append([x,y,z])
+
+                curr_ind +=1
+            
+        np.savetxt(filename, res)
+        logging.info(f'Saved openspace seedpoints to: "{filename}"')
