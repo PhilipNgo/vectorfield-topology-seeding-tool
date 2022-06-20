@@ -58,7 +58,7 @@ def start_window(list_of_actors: List[ vtkActor ]) -> None:
         renderer.AddActor(actor)
 
     renderer.ResetCamera()
-    renderer.SetBackground(colors.GetColor3d('SlateGray'))  # Background Slate Gray
+    renderer.SetBackground(30/255,30/255,30/255)  # Background Slate Gray
 
     renWin = vtkRenderWindow() 
     renWin.AddRenderer(renderer)

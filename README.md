@@ -312,7 +312,7 @@ Loads a .csv data containing critical point info and updates `critical_point_inf
 Sets the template to seed
 | Parameters | Description |
 | :--------- | :----------- |
-| `template` | Currently 3 working templates. `Template.SPHERICAL`,  `Template.TRIPPLE_EIGEN_PLANE`, `Template.SMART`
+| `template` | Currently 3 working templates. `Template.SPHERICAL`,  `Template.TRIPPLE_EIGEN_PLANE`, `Template.SMART`.
 
 
 ### _set_custom_template(template_filename)_

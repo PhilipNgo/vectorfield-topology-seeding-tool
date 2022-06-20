@@ -240,7 +240,8 @@ class SeedpointProcessor():
             self.list_of_actors.append(actor)
         else:
             all_status = [FieldlineStatus.IMF.value,FieldlineStatus.CLOSED.value, FieldlineStatus.OPEN_NORTH.value, FieldlineStatus.OPEN_SOUTH.value]
-            colors = [(0,0,0),(0,0,1),(1,1,1),(1,1,1)]
+            #colors = [(0,0,0),(0,0,1),(1,1,1),(1,1,1)]
+            colors = [(200/255,200/255,200/255),(200/255,200/255,200/255),(200/255,200/255,200/255),(200/255,200/255,200/255)]
 
             for color, status in zip(colors, all_status):
                 df_status = df.loc[(df['FieldlineStatus'] == status)]
