@@ -375,10 +375,11 @@ Updates the seedpoints
 <br/>
 
 ### _save_seed_points_to_file()_
-Save the seed points
-| Description |
-| :--------- | 
-| Saves the `seedpoints` as .txt to directory "./seed_points"|
+Save the seed points .txt to directory "./seed_points"|
+| Parameters | Description |
+| :--------- | :----------- |
+|  `filename` (optional) | Output filename, default is "seedpoints.txt"|
+
 <br/>    
        
 ### _visualize()_
@@ -413,17 +414,17 @@ Sets the seed critical pair
 <br/>
 
 ### _save_seed_points_to_file()_
-Save the seed points
-| Description |
-| :--------- | 
-| Saves the `seedpoints` as .txt to directory "./seed_points"|
+Save the seed points to directory "./seed_points"
+| Parameters | Description |
+| :--------- | :----------- |
+|  `filename` (optional) | Output filename, default is "seedpoints.txt"|
 <br/>
 
-### _save_seed_point_info_to_file()_
-Save the seed point info
-| Description |
-| :--------- | 
-| Saves the `seedpoints_info` as .csv to directory "./seed_points"|
+### _save_seed_point_info_to_file(filename:)_
+Save the seed point info to directory "./seed_points"
+| Parameters | Description |
+| :--------- | :----------- |
+|  `filename` (optional) | Output filename, default is "seedpoints.csv"|
 <br/>
 
 ### _update_seed_point_info()_
@@ -441,6 +442,15 @@ Starts the rendering window and renders everything in the `list_of_actors` class
 | `status` (optional) | Filters based on status. Can be `IMF`, `CLOSED`, `OPEN_NORTH`, `OPEN_SOUTH`|
 <br/>    
 
+
+### _openspace_seeding(z_spacing, p, filename)_ 
+Seed points specifically for OpenSpace since they require to be in a specific order.
+| Parameters | Description |
+| :--------- | :----------- |
+| `z_spacing` (optional) | How much to increase the z-value in the `OPEN_NORTH` and `OPEN_SOUTH` seed points, default z_spacing = 0|
+| `p` (optional) | Pull factor towards Earth,  default p = 0|
+| `filename` (optional)| Output filename, default is "seedpoints_openspace.txt"|
+<br/>    
 
 ### ~~_remove_useless_seed_points()_~~ (not fully functioning)
 

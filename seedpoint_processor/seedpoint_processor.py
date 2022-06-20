@@ -301,7 +301,7 @@ class SeedpointProcessor():
             chunks.append(df[i*chunk_size:(i+1)*chunk_size])
         return chunks
 
-    def openspace_seeding(self, z_spacing=2, p=1/8, filename='seedpoints_openspace.txt') -> None:  
+    def openspace_seeding(self, z_spacing=0, p=0, filename='seedpoints_openspace.txt') -> None:  
 
         #Get pairs of 4
         seedgroups = self.__split_dataframe(5)
