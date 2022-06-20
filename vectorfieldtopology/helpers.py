@@ -6,33 +6,6 @@ from vtkmodules.vtkRenderingCore import (
 )
 from vtk import vtkVectorFieldTopology, vtkMaskPoints, vtkDataSetMapper, vtkGlyph3D, vtkArrowSource, vtkSphereSource, vtkNamedColors
 
-def rename_tecplot_header(filename, large_file=False):
-    """Renames the variables in the tecplot file to correctly match vtk requirements
-        :filename: input file to change (String)
-    """
-
-    try:
-        print("Renaming variables..")
-
-        # Opening the file in read mode
-        file = open(filename, "r")
-
-        list_of_lines = file.readlines()
-        if(large_file):
-            list_of_lines[1] = 'VARIABLES="X", "Y", "Z", "Rho [amu/cm^3]", "U_x [km/s]", "U_y [km/s]", "U_z [km/s]", "E [J/m^3]", "bx", "by", "bz", "B1_x [nT]", "B1_y [nT]", "B1_z [nT]", "P [nPa]", "jx", "jy", "jz", "Status"\n'
-        else:
-            list_of_lines[1] = 'VARIABLES="X", "Y", "Z", "Rho [amu/cm^3]", "U_x [km/s]", "U_y [km/s]", "U_z [km/s]", "bx", "by", "bz", "P [nPa]", "jx", "jy", "jz"\n'
-
-        file = open(filename, "w")
-        file.writelines(list_of_lines)
-        file.close()
-
-        logging.info("Renamed variable X,Y,Z,bx,by,bz,jx,jy,jz")
-
-    except IOError:
-        logging.info(f"Could not open file: '{filename}'")
-        raise FileNotFoundError()
-
 
 def get_critical_point_actor(vft: vtkVectorFieldTopology) -> vtkActor:
     # The critical points
@@ -67,7 +40,6 @@ def get_separatrix_surface(vft: vtkVectorFieldTopology) -> vtkActor:
     surfaceActor = vtkActor()
     surfaceActor.SetMapper(surfaceMapper)
     surfaceActor.GetProperty().SetColor(0.1, 0.1, 0.1)
-    #surfaceActor.GetProperty().SetOpacity(0.12)
     surfaceActor.GetProperty().SetRepresentationToWireframe()
     return surfaceActor
 
