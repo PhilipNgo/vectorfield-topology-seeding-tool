@@ -3,20 +3,11 @@
  <img width=200px height=200px src="images/screenshot_circle.png" alt="Project logo"></a>
 </p>
 
-<h2 align="center">Vectorfield Analyzer Tool</h2>
-
-<div align="center">
-
-  [![Status](https://img.shields.io/badge/status-active-success.svg)]() 
-  [![GitHub Issues](https://img.shields.io/github/issues/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/issues)
-  [![GitHub Pull Requests](https://img.shields.io/github/issues-pr/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/pulls)
-  [![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
-
-</div>
+<h2 align="center">Vectorfield Topology Seeding Tool</h2>
 
 ---
 
-<p align="center"> Finds, processes and visualizes critical points. Generates smart seedpoints to capture overall structure.
+<p align="center"> Finds, processes and visualizes critical points. Generates smart seedpoints to capture overall structure (VTK Python).
     <br> 
 </p>
 
@@ -29,25 +20,18 @@
 
 Clone the repo
 ```bash
-git clone xx
-cd xx
+$ git clone https://github.com/PhilipNgo/vectorfield-topology-seeding-tool.git
+$ cd vectorfield-topology-seeding-tool
 
 ```
-
 Create a virtual environment (optional but recommended)
-```
-$ conda create --name <env> --file requirements.txt
-$ conda activate <env>
-```
-or with pip
-```
-python -m venv <env_name> 
-. <env_name>/bin/activate
-pip install -r requirements.txt
+```bash
+$ conda create --name <your-env-name> --file requirements.txt
+$ conda activate <your-env-name>
 ```
 
 # About
-This is a python based tool built on top of vtk that simplifies the vtkVectorFieldTopology flow and can be used to generate seedpoints around the given critical points. This project is in collabortaion with the Community Coordinated Modeling Center(CCMC) at NASA Goddard Space Flight Center and is used in the OpenSpace application. This tool can also be used to analyze and filter seedpoints based on where its fieldline hits Earth ('IMF', 'CLOSED', 'OPEN_NORTH', 'OPEN_SOUTH'). Since this tool is built mainly to analyze the Earths magnetosphere, some of the functions are tailored to that. However, this tool can be extended to other applications such as analyzing magnetic fields of the sun or even other planets. Som of the functionality might not be applicable as of now though. 
+This is a python based tool built on top of VTK that simplifies the vtkVectorFieldTopology flow and can be used to generate seedpoints around the given critical points or any custom points. This project is in collabortaion with the Community Coordinated Modeling Center(CCMC) at NASA Goddard Space Flight Center and is used in the OpenSpace application. This tool can also be used to analyze and filter seedpoints based on where its fieldline hits Earth ('_IMF_', '_CLOSED_', '_OPEN_NORTH_', '_OPEN_SOUTH_'). Since this tool is built mainly to analyze the Earths magnetosphere, some of the functions are tailored to that. However, this tool can be extended to other applications such as analyzing magnetic fields of the sun or even other planets. Som of the functionality might not be applicable just yet. 
 
 
 # Quick Start: End to end pipeline
