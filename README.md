@@ -203,7 +203,7 @@ Starts the visualization
 
 <br/>
 
-## Part 2: class CriticalPointProcessor
+# Part 2: class CriticalPointProcessor
 | Class variables | Description |
 | :--------- | :----------- |
 | `critical_points` | List of critical point (x,y,z) coordinates|
@@ -284,7 +284,7 @@ Saves critical points to file
 <br/>
 
 
-## Part 3: class SeedpointGenerator
+# Part 3: class SeedpointGenerator
 | Class variables | Description |
 | :--------- | :----------- |
 | `critical_points` | List of critical point (x,y,z) coordinates|
@@ -374,7 +374,7 @@ Starts the visualization
 <br/>    
 
 
-## Part 4: class SeedpointProcessor
+# Part 4: class SeedpointProcessor
 | Class variables | Description |
 | :--------- | :----------- |
 | `seedpoints` | List of seed points (x,y,z) coordinates|
