@@ -7,7 +7,7 @@
 
 ---
 
-<p align="center"> Finds, processes and visualizes critical points. Generates smart seedpoints to capture overall structure (VTK Python).
+<p align="center"> Finds, processes and visualizes critical points. Generates smart seedpoints to capture magnetic reconnection/topological changes (VTK Python).
     <br> 
 </p>
 
