@@ -38,8 +38,6 @@ This is a python based tool built on top of VTK that simplifies the vtkVectorFie
 
 ```python
 
-import numpy as np
-import pandas as pd
 from criticalpoint_processor.criticalpoint_processor import CriticalPointProcessor
 from seedpoint_generator.seedpoint_generator import SeedpointGenerator, Template
 from seedpoint_processor.seedpoint_processor import EarthSide, SeedpointProcessor, FieldlineStatus
@@ -50,7 +48,7 @@ from vtk_visualization.helpers import start_window
 def main():
     ####################### PART 1: Find critical points #############################
 
-    filename = 'data/3d__var_2_e20000101-020000-000.dat'
+    filename = 'data/cut_mhd_2_e20000101-020000-000.dat'
     
     vft = VectorFieldTopology()
     vft.read_file(filename, rename_xyz=True)
@@ -80,7 +78,6 @@ def main():
     sp_generator.visualize()
     
     # ######################### PART 4: PROCESS SEEDPOINTS ################################
-    # t3_start = perf_counter()
 
     sp_processor = SeedpointProcessor()
     sp_processor.set_seed_critical_pair(sp_generator.seed_critical_pair)
@@ -90,14 +87,10 @@ def main():
     sp_processor.save_seed_points_to_file() 
     sp_processor.visualize()
     sp_processor.visualize(side=EarthSide.DAYSIDE.value, status=FieldlineStatus.CLOSED.value)
-    sp_processor.visualize(side=EarthSide.DAYSIDE.value, status=FieldlineStatus.CLOSED.value)
     sp_processor.visualize(side=EarthSide.NIGHTSIDE.value, status=FieldlineStatus.CLOSED.value)
 
 if __name__ == '__main__':
     main()
-   
-    
-   
     
 ```
 
