@@ -11,43 +11,34 @@
     <br> 
 </p>
 
+# About
+This is a python based tool built on top of VTK that simplifies the vtkVectorFieldTopology flow and can be used to generate seedpoints around the given critical points or any custom points. This project is in collaboration with the Community Coordinated Modeling Center(CCMC) at NASA Goddard Space Flight Center and is used in the OpenSpace application. This tool can also be used to analyze and filter seedpoints based on where its fieldline hits Earth ('_IMF_', '_CLOSED_', '_OPEN_NORTH_', '_OPEN_SOUTH_'). Since this tool is built mainly to analyze the Earth's magnetosphere, some of the functions are tailored to that. However, this tool can be extended to other applications such as analyzing magnetic fields of the sun or even other planets. Some of the functionality might not be applicable just yet. 
 
-# Table of content
-- Getting Started
-- Examples
-- Documentation
-- Research
+# Getting started
 
 Clone the repo
 ```bash
 git clone https://github.com/PhilipNgo/vectorfield-topology-seeding-tool.git
-```
-```bash
 cd vectorfield-topology-seeding-tool
 ```
 
 Create a virtual environment (optional but recommended)
-```bash
+> Option 1:
+```bash 
 conda create --name <your-env-name> --file requirements.txt
 conda activate <your-env-name>
 ```
 
-> Note: If the commands above doesn't work, we can manually install the dependencies. 
+> Option 2: (If the commands above doesn't work, we can manually install the dependencies)
 ```bash
 conda create --name <your-env-name> python=3.9.2
 conda activate <your-env-name>
-```
 
-Install dependencies
-```bash
+# Dependencies
 conda install numpy
 conda install pandas
 conda install vtk
 ```
-
-
-# About
-This is a python based tool built on top of VTK that simplifies the vtkVectorFieldTopology flow and can be used to generate seedpoints around the given critical points or any custom points. This project is in collaboration with the Community Coordinated Modeling Center(CCMC) at NASA Goddard Space Flight Center and is used in the OpenSpace application. This tool can also be used to analyze and filter seedpoints based on where its fieldline hits Earth ('_IMF_', '_CLOSED_', '_OPEN_NORTH_', '_OPEN_SOUTH_'). Since this tool is built mainly to analyze the Earth's magnetosphere, some of the functions are tailored to that. However, this tool can be extended to other applications such as analyzing magnetic fields of the sun or even other planets. Some of the functionality might not be applicable just yet. 
 
 
 # Quick Start: End to end pipeline
