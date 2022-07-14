@@ -14,7 +14,7 @@
 # About
 This is a python based tool built on top of VTK that simplifies the vtkVectorFieldTopology flow and can be used to generate seedpoints around the given critical points or any custom points. This project is in collaboration with the Community Coordinated Modeling Center(CCMC) at NASA Goddard Space Flight Center and is used in the OpenSpace application. This tool can also be used to analyze and filter seedpoints based on where its fieldline hits Earth ('_IMF_', '_CLOSED_', '_OPEN_NORTH_', '_OPEN_SOUTH_'). Since this tool is built mainly to analyze the Earth's magnetosphere, some of the functions are tailored to that. However, this tool can be extended to other applications such as analyzing magnetic fields of the sun or even other planets. Some of the functionality might not be applicable just yet. 
 
-There are two pipelines proposed, The [Critical Point-Based Pipeline](#quick-start-critical-point-based-pipeline), and the [Derived Field-Based Pipeline](/alternate_pipeline/README.md). This README is for the critical point based pipeline. The other is in [/alterante_pipeline](/alternate_pipeline/) directory.
+There are two pipelines proposed, The [Critical Point-Based Pipeline](#quick-start-critical-point-based-pipeline), and the [Derived Field-Based Pipeline](/alternate_pipeline/README.md). This README is for the critical point based pipeline. The other is in [/alternate_pipeline](/alternate_pipeline/) directory.
 
 # Getting started
 
